@@ -1,0 +1,162 @@
+<!-- 
+  Pustaka Digital Premium - Kategori Panel (Kategori.html)
+  Dynamic Category Management Grid with Modern Gradients
+-->
+
+<div class="space-y-6">
+  <!-- Header Action Bar -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-extrabold text-slate-800 dark:text-white">Kelola Kategori Buku</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        Kelola klasifikasi buku untuk mempermudah pencarian pembaca.
+      </p>
+    </div>
+    
+    <!-- Admin-only add button -->
+    <button onclick="openCategoryModal()" class="premium-glow-button px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 text-sm self-start md:self-auto admin-only">
+      <i class="fas fa-plus"></i>
+      <span>Tambah Kategori</span>
+    </button>
+  </div>
+
+  <!-- Categories Grid -->
+  <div id="categories-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Category cards will be loaded here dynamically via Javascript -->
+    <div class="col-span-full py-20 flex flex-col items-center justify-center text-slate-400">
+      <div class="glow-loader mb-4"></div>
+      <p class="text-sm font-semibold">Memuat kategori...</p>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY MODAL -->
+<div id="category-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+  <div class="glass-panel w-full max-w-md overflow-hidden relative animate-fadeIn scale-95 transition-all" id="category-modal-card">
+    <!-- Modal Header -->
+    <div class="p-6 border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between">
+      <h3 id="category-modal-title" class="text-xl font-bold text-slate-800 dark:text-white">
+        Tambah Kategori Baru
+      </h3>
+      <button onclick="closeCategoryModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-all">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <form id="form-category" onsubmit="handleCategorySubmit(event)" class="p-6 space-y-5">
+      <input type="hidden" id="category-id-field" />
+
+      <!-- Category Name -->
+      <div class="form-floating-custom">
+        <input id="cat-nama-input" type="text" placeholder="Nama Kategori" required
+          class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all" />
+        <label for="cat-nama-input"><i class="fas fa-folder-open mr-2"></i>Nama Kategori</label>
+      </div>
+
+      <!-- Icon Choice -->
+      <div class="space-y-2">
+        <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Pilih Icon Kategori</label>
+        <div class="grid grid-cols-6 gap-3 p-3 border border-slate-200 dark:border-slate-800 rounded-xl bg-white/40 dark:bg-slate-900/40 max-h-40 overflow-y-auto">
+          <!-- Icon options -->
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-book" class="hidden" checked />
+            <i class="fas fa-book text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-flask" class="hidden" />
+            <i class="fas fa-flask text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-laptop-code" class="hidden" />
+            <i class="fas fa-laptop-code text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-book-open" class="hidden" />
+            <i class="fas fa-book-open text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-globe" class="hidden" />
+            <i class="fas fa-globe text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-history" class="hidden" />
+            <i class="fas fa-history text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-compass" class="hidden" />
+            <i class="fas fa-compass text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-calculator" class="hidden" />
+            <i class="fas fa-calculator text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-music" class="hidden" />
+            <i class="fas fa-music text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-palette" class="hidden" />
+            <i class="fas fa-palette text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-info-circle" class="hidden" />
+            <i class="fas fa-info-circle text-lg"></i>
+          </label>
+          <label class="flex flex-col items-center justify-center p-2 rounded-lg cursor-pointer border hover:bg-blue-50 hover:border-blue-500 transition-all dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">
+            <input type="radio" name="cat-icon" value="fa-heart" class="hidden" />
+            <i class="fas fa-heart text-lg"></i>
+          </label>
+        </div>
+      </div>
+
+      <!-- Color Theme Choice -->
+      <div class="space-y-2">
+        <label class="text-sm font-semibold text-slate-700 dark:text-slate-300">Pilih Warna Aksen</label>
+        <div class="flex items-center gap-4 flex-wrap">
+          <!-- Blue -->
+          <label class="cursor-pointer">
+            <input type="radio" name="cat-color" value="blue" class="hidden" checked />
+            <span class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center border-2 border-transparent transition-all"><i class="fas fa-check text-white text-xs opacity-0"></i></span>
+          </label>
+          <!-- Emerald -->
+          <label class="cursor-pointer">
+            <input type="radio" name="cat-color" value="emerald" class="hidden" />
+            <span class="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center border-2 border-transparent transition-all"><i class="fas fa-check text-white text-xs opacity-0"></i></span>
+          </label>
+          <!-- Rose -->
+          <label class="cursor-pointer">
+            <input type="radio" name="cat-color" value="rose" class="hidden" />
+            <span class="w-8 h-8 rounded-full bg-rose-500 flex items-center justify-center border-2 border-transparent transition-all"><i class="fas fa-check text-white text-xs opacity-0"></i></span>
+          </label>
+          <!-- Amber -->
+          <label class="cursor-pointer">
+            <input type="radio" name="cat-color" value="amber" class="hidden" />
+            <span class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center border-2 border-transparent transition-all"><i class="fas fa-check text-white text-xs opacity-0"></i></span>
+          </label>
+          <!-- Purple -->
+          <label class="cursor-pointer">
+            <input type="radio" name="cat-color" value="purple" class="hidden" />
+            <span class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center border-2 border-transparent transition-all"><i class="fas fa-check text-white text-xs opacity-0"></i></span>
+          </label>
+          <!-- Cyan -->
+          <label class="cursor-pointer">
+            <input type="radio" name="cat-color" value="cyan" class="hidden" />
+            <span class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center border-2 border-transparent transition-all"><i class="fas fa-check text-white text-xs opacity-0"></i></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-3 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
+        <button type="button" onclick="closeCategoryModal()" class="flex-1 py-3 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-sm">
+          Batal
+        </button>
+        <button type="submit" class="flex-1 py-3 text-white font-semibold rounded-xl premium-glow-button text-sm flex items-center justify-center gap-2">
+          <span>Simpan</span>
+          <i class="fas fa-save"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

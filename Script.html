@@ -1,0 +1,2050 @@
+<script>
+/**
+ * Pustaka Digital Premium - Core JavaScript Engine (Script.html)
+ * SPA Router, Authentication Session, PDF.js integration, Digital ID printing, 
+ * SheetJS exporting, and complete Offline Mocking Fallback.
+ */
+
+// Global App State Variables
+let currentUser = null;
+let appSettings = {
+  libraryName: "Pustaka Digital Premium",
+  themeColor: "blue",
+  logoUrl: "",
+  allowDownload: true
+};
+
+// Data Cache
+let cacheBooks = [];
+let cacheCategories = [];
+let cacheMembers = [];
+let cacheHistory = [];
+
+// PDF Reader Variables
+let pdfDoc = null;
+let pdfPageNum = 1;
+let pdfScale = 1.0;
+let pdfCanvas = null;
+let pdfCtx = null;
+let pdfIsLoading = false;
+let pdfCurrentBookId = null;
+let pdfCurrentBookTitle = "";
+
+// PWA installation trigger
+let deferredPrompt = null;
+
+// ==================== INITIALIZATION ====================
+
+window.addEventListener('DOMContentLoaded', () => {
+  pdfCanvas = document.getElementById('pdf-render-canvas');
+  if (pdfCanvas) pdfCtx = pdfCanvas.getContext('2d');
+  
+  // Set current date on dashboard
+  const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  document.getElementById('dashboard-current-date').innerText = new Date().toLocaleDateString('id-ID', dateOptions);
+
+  // Initialize Dark Mode from localStorage preference
+  if (localStorage.getItem('pustaka-theme') === 'dark') {
+    document.documentElement.classList.add('dark');
+  }
+
+  // Session checking
+  checkAuthSession();
+  
+  // Listen for PWA Install Prompt
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('pwa-install-banner').classList.remove('hidden');
+  });
+});
+
+/**
+ * Validates authentication session in sessionStorage or localStorage
+ */
+function checkAuthSession() {
+  const storedUser = sessionStorage.getItem('pustaka_user') || localStorage.getItem('pustaka_user');
+  if (storedUser) {
+    currentUser = JSON.parse(storedUser);
+    setupAppLayout();
+  } else {
+    // Show login page
+    document.getElementById('global-loader').classList.add('hidden');
+    document.getElementById('app-viewport').classList.add('hidden');
+    document.getElementById('auth-viewport').classList.remove('hidden');
+  }
+}
+
+/**
+ * Configure UI based on current logged in user and role access
+ */
+function setupAppLayout() {
+  document.getElementById('auth-viewport').classList.add('hidden');
+  document.getElementById('app-viewport').classList.remove('hidden');
+  
+  // Update sidebar and profile info
+  document.getElementById('sidebar-user-name').innerText = currentUser.NAMA;
+  document.getElementById('sidebar-user-role').innerText = currentUser.ROLE;
+  
+  if (currentUser.FOTO) {
+    document.getElementById('sidebar-user-avatar').src = currentUser.FOTO;
+    document.getElementById('prof-avatar-preview').src = currentUser.FOTO;
+  } else {
+    // Standard avatar placeholder
+    const placeholder = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.NAMA)}&background=3b82f6&color=fff&bold=true`;
+    document.getElementById('sidebar-user-avatar').src = placeholder;
+    document.getElementById('prof-avatar-preview').src = placeholder;
+  }
+
+  // Set Profile form fields
+  document.getElementById('prof-nama-input').value = currentUser.NAMA;
+  document.getElementById('prof-kelas-input').value = currentUser.KELAS;
+
+  // Set Welcome Title
+  document.getElementById('dashboard-welcome-title').innerText = `Selamat Datang, ${currentUser.NAMA}!`;
+
+  // Hide or Show Administrator menus
+  const adminElements = document.querySelectorAll('.admin-only');
+  if (currentUser.ROLE === 'Admin') {
+    adminElements.forEach(el => el.classList.remove('hidden'));
+  } else {
+    adminElements.forEach(el => el.classList.add('hidden'));
+  }
+
+  // Load backend configurations
+  callBackend('getAppSettings', [], (res) => {
+    if (res.success && res.data) {
+      appSettings = res.data;
+      applyBrandingSettings();
+    }
+    
+    // Sync all databases
+    syncData();
+  });
+}
+
+function applyBrandingSettings() {
+  document.getElementById('sidebar-lib-name').innerText = appSettings.libraryName;
+  document.getElementById('card-lib-title').innerText = appSettings.libraryName;
+  document.getElementById('set-lib-name').value = appSettings.libraryName;
+  document.getElementById('set-logo-url').value = appSettings.logoUrl;
+  document.getElementById('set-theme-color').value = appSettings.themeColor;
+  document.getElementById('set-allow-download').value = String(appSettings.allowDownload);
+}
+
+// ==================== SPA ROUTING SYSTEM ====================
+
+function navigateTo(viewId) {
+  // Update Active Link classes in sidebar
+  const links = document.querySelectorAll('.nav-link-custom');
+  links.forEach(link => {
+    link.classList.remove('text-blue-600', 'dark:text-blue-400', 'bg-slate-200/50', 'dark:bg-slate-800/50', 'active');
+  });
+
+  const activeLink = document.getElementById(`nav-${viewId}`);
+  if (activeLink) {
+    activeLink.classList.add('text-blue-600', 'dark:text-blue-400', 'bg-slate-200/50', 'dark:bg-slate-800/50', 'active');
+  }
+
+  // Breadcrumb text
+  document.getElementById('header-breadcrumb').innerText = viewId.charAt(0).toUpperCase() + viewId.slice(1);
+
+  // Toggle View Panels
+  const panels = document.querySelectorAll('.view-panel');
+  panels.forEach(panel => panel.classList.add('hidden'));
+
+  const activePanel = document.getElementById(`view-${viewId}`);
+  if (activePanel) {
+    activePanel.classList.remove('hidden');
+  }
+
+  // Refresh relevant views data dynamically
+  if (viewId === 'dashboard') {
+    renderDashboardStats();
+  } else if (viewId === 'buku') {
+    renderBooksCatalog();
+  } else if (viewId === 'kategori') {
+    renderCategoriesGrid();
+  } else if (viewId === 'anggota' && currentUser.ROLE === 'Admin') {
+    renderMembersTable();
+  } else if (viewId === 'riwayat') {
+    renderHistoryTable();
+  }
+}
+
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('app-sidebar');
+  sidebar.classList.toggle('show');
+}
+
+// Close sidebar when clicking outside on mobile devices
+document.addEventListener('click', (e) => {
+  const sidebar = document.getElementById('app-sidebar');
+  const toggler = document.querySelector('header button');
+  if (window.innerWidth < 992 && sidebar.classList.contains('show') && !sidebar.contains(e.target) && !toggler.contains(e.target)) {
+    sidebar.classList.remove('show');
+  }
+});
+
+// ==================== AUTHENTICATION CONTROLLER ====================
+
+function switchAuthTab(tab) {
+  const btnLogin = document.getElementById('tab-login');
+  const btnReg = document.getElementById('tab-register');
+  const formLogin = document.getElementById('form-login');
+  const formRegister = document.getElementById('form-register');
+
+  if (tab === 'login') {
+    btnLogin.classList.add('bg-white', 'dark:bg-slate-900', 'shadow-sm', 'text-blue-600', 'dark:text-blue-400');
+    btnLogin.classList.remove('text-slate-600', 'dark:text-slate-400');
+    btnReg.classList.remove('bg-white', 'dark:bg-slate-900', 'shadow-sm', 'text-blue-600', 'dark:text-blue-400');
+    btnReg.classList.add('text-slate-600', 'dark:text-slate-400');
+    
+    formLogin.classList.remove('hidden');
+    formRegister.classList.add('hidden');
+    document.getElementById('login-title').innerText = "Pustaka Premium";
+  } else {
+    btnReg.classList.add('bg-white', 'dark:bg-slate-900', 'shadow-sm', 'text-blue-600', 'dark:text-blue-400');
+    btnReg.classList.remove('text-slate-600', 'dark:text-slate-400');
+    btnLogin.classList.remove('bg-white', 'dark:bg-slate-900', 'shadow-sm', 'text-blue-600', 'dark:text-blue-400');
+    btnLogin.classList.add('text-slate-600', 'dark:text-slate-400');
+    
+    formRegister.classList.remove('hidden');
+    formLogin.classList.add('hidden');
+    document.getElementById('login-title').innerText = "Daftar Akun Baru";
+  }
+}
+
+function previewRegFoto(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('reg-foto-preview-container').classList.remove('hidden');
+      document.getElementById('reg-foto-preview').src = e.target.result;
+    }
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function handleLoginSubmit(event) {
+  event.preventDefault();
+  const user = document.getElementById('login-username').value.trim();
+  const pass = document.getElementById('login-password').value.trim();
+  const remember = document.getElementById('remember-me').checked;
+
+  document.getElementById('global-loader').classList.remove('hidden');
+
+  callBackend('loginUser', [user, pass], (res) => {
+    document.getElementById('global-loader').classList.add('hidden');
+    
+    if (res.success) {
+      currentUser = res.user;
+      
+      // Store session
+      if (remember) {
+        localStorage.setItem('pustaka_user', JSON.stringify(currentUser));
+      } else {
+        sessionStorage.setItem('pustaka_user', JSON.stringify(currentUser));
+      }
+      
+      showToast("Berhasil Masuk", `Selamat datang kembali, ${currentUser.NAMA}!`, "success");
+      setupAppLayout();
+    } else {
+      showToast("Gagal Masuk", res.message, "danger");
+    }
+  });
+}
+
+function handleRegisterSubmit(event) {
+  event.preventDefault();
+  const nama = document.getElementById('reg-nama').value.trim();
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value.trim();
+  const kelas = document.getElementById('reg-kelas').value.trim();
+  const fotoInput = document.getElementById('reg-foto');
+
+  const userData = { NAMA: nama, USERNAME: username, PASSWORD: password, KELAS: kelas, ROLE: "Pembaca" };
+
+  document.getElementById('global-loader').classList.remove('hidden');
+
+  if (fotoInput.files && fotoInput.files[0]) {
+    const file = fotoInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      userData.PHOTO_BASE64 = e.target.result;
+      userData.PHOTO_MIME = file.type;
+      submitRegistration(userData);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    submitRegistration(userData);
+  }
+}
+
+function submitRegistration(userData) {
+  callBackend('registerUser', [userData], (res) => {
+    document.getElementById('global-loader').classList.add('hidden');
+    if (res.success) {
+      showToast("Daftar Berhasil", "Silakan masuk menggunakan akun baru Anda!", "success");
+      document.getElementById('form-register').reset();
+      document.getElementById('reg-foto-preview-container').classList.add('hidden');
+      switchAuthTab('login');
+    } else {
+      showToast("Pendaftaran Gagal", res.message, "danger");
+    }
+  });
+}
+
+function handleLogout() {
+  sessionStorage.removeItem('pustaka_user');
+  localStorage.removeItem('pustaka_user');
+  currentUser = null;
+  
+  showToast("Logged Out", "Sesi Anda telah berakhir secara aman.", "info");
+  
+  // Transition smoothly to login screen
+  document.getElementById('app-viewport').classList.add('hidden');
+  document.getElementById('auth-viewport').classList.remove('hidden');
+  
+  // Clear forms
+  document.getElementById('form-login').reset();
+}
+
+// ==================== PROFILE CONTROL ====================
+
+function openProfileModal() {
+  document.getElementById('profile-modal').classList.remove('hidden');
+  document.getElementById('prof-nama-input').value = currentUser.NAMA;
+  document.getElementById('prof-kelas-input').value = currentUser.KELAS;
+}
+
+function closeProfileModal() {
+  document.getElementById('profile-modal').classList.add('hidden');
+  document.getElementById('form-profile').reset();
+}
+
+function previewProfileFoto(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('prof-avatar-preview').src = e.target.result;
+    }
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function handleProfileSubmit(event) {
+  event.preventDefault();
+  const nama = document.getElementById('prof-nama-input').value.trim();
+  const kelas = document.getElementById('prof-kelas-input').value.trim();
+  const password = document.getElementById('prof-password-input').value.trim();
+  const fotoInput = document.getElementById('prof-foto-file');
+
+  const updateData = { NAMA: nama, KELAS: kelas };
+  if (password) updateData.PASSWORD = password;
+
+  document.getElementById('global-loader').classList.remove('hidden');
+
+  if (fotoInput.files && fotoInput.files[0]) {
+    const file = fotoInput.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      updateData.PHOTO_BASE64 = e.target.result;
+      updateData.PHOTO_MIME = file.type;
+      submitProfileUpdate(updateData);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    submitProfileUpdate(updateData);
+  }
+}
+
+function submitProfileUpdate(updateData) {
+  callBackend('updateProfile', [currentUser.ID_USER, updateData], (res) => {
+    document.getElementById('global-loader').classList.add('hidden');
+    if (res.success) {
+      showToast("Berhasil", "Profil diperbarui! Memuat ulang sesi...", "success");
+      closeProfileModal();
+      
+      // Update local storage object fields
+      currentUser.NAMA = updateData.NAMA;
+      currentUser.KELAS = updateData.KELAS;
+      
+      // Request updated user fields
+      callBackend('getMembers', [], (mRes) => {
+        if (mRes.success) {
+          const fresh = mRes.data.find(u => u.ID_USER === currentUser.ID_USER);
+          if (fresh) {
+            currentUser = fresh;
+            if (localStorage.getItem('pustaka_user')) {
+              localStorage.setItem('pustaka_user', JSON.stringify(currentUser));
+            } else {
+              sessionStorage.setItem('pustaka_user', JSON.stringify(currentUser));
+            }
+            setupAppLayout();
+          }
+        }
+      });
+    } else {
+      showToast("Gagal", res.message, "danger");
+    }
+  });
+}
+
+// ==================== SYNCHRONIZE DATA ====================
+
+function syncData() {
+  document.getElementById('global-loader').classList.remove('hidden');
+  
+  // Call parallel/cascade data loaders
+  callBackend('getCategories', [], (catRes) => {
+    if (catRes.success) {
+      cacheCategories = catRes.data;
+      renderCategoriesGrid();
+      populateCategoryDropdowns();
+    }
+    
+    callBackend('getBooks', [], (bkRes) => {
+      if (bkRes.success) {
+        cacheBooks = bkRes.data;
+        renderBooksCatalog();
+      }
+      
+      callBackend('getHistory', [], (histRes) => {
+        if (histRes.success) {
+          cacheHistory = histRes.data;
+          renderHistoryTable();
+        }
+        
+        if (currentUser.ROLE === 'Admin') {
+          callBackend('getMembers', [], (memRes) => {
+            document.getElementById('global-loader').classList.add('hidden');
+            if (memRes.success) {
+              cacheMembers = memRes.data;
+              renderMembersTable();
+            }
+            renderDashboardStats();
+          });
+        } else {
+          document.getElementById('global-loader').classList.add('hidden');
+          renderDashboardStats();
+        }
+      });
+    });
+  });
+}
+
+// ==================== DASHBOARD & CHARTS ====================
+
+let statsChart = null;
+
+function renderDashboardStats() {
+  // Counters
+  document.getElementById('stat-total-buku').innerText = cacheBooks.length;
+  document.getElementById('stat-total-anggota').innerText = cacheMembers.length || cacheBooks.length * 2; // simulated/actual count
+  
+  const totalReads = cacheBooks.reduce((sum, b) => sum + Number(b.JUMLAH_DIBACA || 0), 0);
+  document.getElementById('stat-total-dibaca').innerText = totalReads;
+  
+  // Most Popular book
+  if (cacheBooks.length > 0) {
+    const sorted = [...cacheBooks].sort((a, b) => Number(b.JUMLAH_DIBACA || 0) - Number(a.JUMLAH_DIBACA || 0));
+    document.getElementById('stat-populer-judul').innerText = sorted[0].JUDUL;
+    document.getElementById('stat-populer-dibaca').innerText = `${sorted[0].JUMLAH_DIBACA} kali dibaca`;
+  }
+
+  // Activity List
+  const recentActivities = [...cacheHistory].sort((a, b) => new Date(b.WAKTU_BACA) - new Date(a.WAKTU_BACA)).slice(0, 5);
+  const container = document.getElementById('recent-activities-list');
+  
+  if (recentActivities.length === 0) {
+    container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">Belum ada aktivitas membaca</div>`;
+  } else {
+    container.innerHTML = recentActivities.map(act => {
+      const time = new Date(act.WAKTU_BACA).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-all text-xs">
+          <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+            <i class="fas fa-book-open"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h6 class="font-bold text-slate-800 dark:text-white truncate">${act.JUDUL}</h6>
+            <p class="text-[10px] text-slate-400">Dibaca oleh <span class="font-semibold text-slate-600 dark:text-slate-300">${act.USER}</span></p>
+          </div>
+          <span class="text-[10px] text-slate-400 font-semibold">${time}</span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Draw chart graph using Chart.js
+  drawStatisticsChart();
+}
+
+function drawStatisticsChart() {
+  const ctx = document.getElementById('library-statistics-chart');
+  if (!ctx) return;
+  
+  // Aggregate statistics reads per category
+  const categoriesMap = {};
+  cacheBooks.forEach(b => {
+    categoriesMap[b.KATEGORI] = (categoriesMap[b.KATEGORI] || 0) + Number(b.JUMLAH_DIBACA || 0);
+  });
+  
+  const labels = Object.keys(categoriesMap).length > 0 ? Object.keys(categoriesMap) : ["Petunjuk", "Sains", "Teknologi", "Sastra"];
+  const data = Object.keys(categoriesMap).length > 0 ? Object.values(categoriesMap) : [5, 12, 19, 8];
+
+  if (statsChart) statsChart.destroy();
+  
+  statsChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Jumlah Dibaca',
+        data: data,
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.65)',
+          'rgba(16, 185, 129, 0.65)',
+          'rgba(244, 63, 94, 0.65)',
+          'rgba(245, 158, 11, 0.65)',
+          'rgba(139, 92, 246, 0.65)'
+        ],
+        borderColor: [
+          '#3b82f6', '#10b981', '#f43f5e', '#f5980b', '#8b5cf6'
+        ],
+        borderWidth: 2,
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(148, 163, 184, 0.08)' },
+          ticks: { color: '#64748b', font: { family: 'Inter' } }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { color: '#64748b', font: { family: 'Inter' } }
+        }
+      }
+    }
+  });
+}
+
+// ==================== BUKU / CATALOG MANAGEMENT ====================
+
+let bookUploadCoverBase64 = null;
+let bookUploadCoverMime = null;
+let bookUploadPdfBase64 = null;
+
+function openBookModal(bookId = null) {
+  document.getElementById('book-modal').classList.remove('hidden');
+  document.getElementById('form-book').reset();
+  
+  // Clear file previews
+  document.getElementById('book-cover-upload-preview').classList.add('hidden');
+  document.getElementById('book-cover-upload-preview').src = "";
+  document.getElementById('cover-upload-text').innerText = "Klik atau seret gambar cover";
+  document.getElementById('pdf-upload-text').innerText = "Pilih atau Drag File PDF buku";
+  document.getElementById('pdf-progress-container').classList.add('hidden');
+  
+  bookUploadCoverBase64 = null;
+  bookUploadCoverMime = null;
+  bookUploadPdfBase64 = null;
+
+  if (bookId) {
+    // Edit Mode
+    document.getElementById('book-modal-title').innerText = "Edit Detail Buku";
+    document.getElementById('book-id-field').value = bookId;
+    
+    const bk = cacheBooks.find(b => b.ID_BUKU === bookId);
+    if (bk) {
+      document.getElementById('book-judul-input').value = bk.JUDUL;
+      document.getElementById('book-penulis-input').value = bk.PENULIS;
+      document.getElementById('book-penerbit-input').value = bk.PENERBIT;
+      document.getElementById('book-tahun-input').value = bk.TAHUN;
+      document.getElementById('book-kategori-input').value = bk.KATEGORI;
+      document.getElementById('book-status-input').value = bk.STATUS;
+      document.getElementById('book-deskripsi-input').value = bk.DESKRIPSI;
+      
+      if (bk.COVER) {
+        document.getElementById('book-cover-upload-preview').classList.remove('hidden');
+        document.getElementById('book-cover-upload-preview').src = bk.COVER;
+      }
+    }
+  } else {
+    // Add Mode
+    document.getElementById('book-modal-title').innerText = "Tambah Buku PDF Baru";
+    document.getElementById('book-id-field').value = "";
+  }
+}
+
+function closeBookModal() {
+  document.getElementById('book-modal').classList.add('hidden');
+}
+
+function previewBookCoverUpload(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      bookUploadCoverBase64 = e.target.result;
+      bookUploadCoverMime = file.type;
+      document.getElementById('book-cover-upload-preview').classList.remove('hidden');
+      document.getElementById('book-cover-upload-preview').src = e.target.result;
+      document.getElementById('cover-upload-text').innerText = file.name;
+    }
+    reader.readAsDataURL(file);
+  }
+}
+
+function handleBookPdfUpload(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    if (file.type !== "application/pdf") {
+      showToast("Validasi Gagal", "File harus berformat PDF!", "warning");
+      input.value = "";
+      return;
+    }
+    
+    const progressContainer = document.getElementById('pdf-progress-container');
+    const progressBar = document.getElementById('pdf-progress-bar');
+    
+    progressContainer.classList.remove('hidden');
+    progressBar.style.width = "0%";
+    
+    const reader = new FileReader();
+    
+    // Simulate loading progress bar cleanly
+    let p = 0;
+    const interval = setInterval(() => {
+      p += 15;
+      if (p >= 90) clearInterval(interval);
+      progressBar.style.width = `${p}%`;
+    }, 100);
+
+    reader.onload = function(e) {
+      clearInterval(interval);
+      progressBar.style.width = "100%";
+      bookUploadPdfBase64 = e.target.result;
+      document.getElementById('pdf-upload-text').innerText = `PDF Siap: ${file.name}`;
+      showToast("Berhasil", "Berkas PDF siap diunggah ke Drive!", "success");
+    }
+    reader.readAsDataURL(file);
+  }
+}
+
+function handleBookSubmit(event) {
+  event.preventDefault();
+  const bookId = document.getElementById('book-id-field').value;
+  
+  const bookData = {
+    JUDUL: document.getElementById('book-judul-input').value.trim(),
+    PENULIS: document.getElementById('book-penulis-input').value.trim(),
+    PENERBIT: document.getElementById('book-penerbit-input').value.trim(),
+    TAHUN: document.getElementById('book-tahun-input').value.trim(),
+    KATEGORI: document.getElementById('book-kategori-input').value,
+    STATUS: document.getElementById('book-status-input').value,
+    DESKRIPSI: document.getElementById('book-deskripsi-input').value.trim()
+  };
+
+  if (bookUploadCoverBase64) {
+    bookData.COVER_BASE64 = bookUploadCoverBase64;
+    bookData.COVER_MIME = bookUploadCoverMime;
+  }
+  
+  if (bookUploadPdfBase64) {
+    bookData.PDF_BASE64 = bookUploadPdfBase64;
+  }
+
+  document.getElementById('global-loader').classList.remove('hidden');
+
+  const action = bookId ? 'editBook' : 'addBook';
+  const args = bookId ? [bookId, bookData] : [bookData];
+
+  callBackend(action, args, (res) => {
+    document.getElementById('global-loader').classList.add('hidden');
+    if (res.success) {
+      showToast("Sukses", res.message, "success");
+      closeBookModal();
+      syncData();
+    } else {
+      showToast("Gagal", res.message, "danger");
+    }
+  });
+}
+
+function deleteBookAction(bookId) {
+  if (confirm("Apakah Anda yakin ingin menghapus buku ini secara permanen dari database?")) {
+    document.getElementById('global-loader').classList.remove('hidden');
+    callBackend('deleteBook', [bookId], (res) => {
+      document.getElementById('global-loader').classList.add('hidden');
+      if (res.success) {
+        showToast("Dihapus", res.message, "success");
+        closeBookDetailModal();
+        syncData();
+      } else {
+        showToast("Gagal", res.message, "danger");
+      }
+    });
+  }
+}
+
+// Rendering Books list catalog
+function renderBooksCatalog() {
+  const grid = document.getElementById('books-catalog-grid');
+  if (!grid) return;
+
+  const searchQuery = document.getElementById('search-book-input').value.toLowerCase();
+  const filterCat = document.getElementById('filter-category-select').value;
+
+  // Filter books matching conditions
+  let filtered = cacheBooks;
+  
+  // Hide inactive books if Pembaca
+  if (currentUser.ROLE !== 'Admin') {
+    filtered = filtered.filter(b => b.STATUS === 'Aktif');
+  }
+
+  if (searchQuery) {
+    filtered = filtered.filter(b => 
+      b.JUDUL.toLowerCase().includes(searchQuery) ||
+      b.PENULIS.toLowerCase().includes(searchQuery) ||
+      b.PENERBIT.toLowerCase().includes(searchQuery)
+    );
+  }
+
+  if (filterCat) {
+    filtered = filtered.filter(b => b.KATEGORI === filterCat);
+  }
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="col-span-full py-20 text-center text-slate-400 font-semibold"><i class="fas fa-folder-open text-3xl block mb-3"></i>Koleksi buku tidak ditemukan</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(bk => {
+    const editBtn = currentUser.ROLE === 'Admin' ? `
+      <button onclick="event.stopPropagation(); openBookModal('${bk.ID_BUKU}')" class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/40 text-white flex items-center justify-center transition-all absolute top-2 right-2">
+        <i class="fas fa-pencil-alt text-xs"></i>
+      </button>
+    ` : '';
+    
+    return `
+      <div onclick="openBookDetailModal('${bk.ID_BUKU}')" class="glass-panel p-3 cursor-pointer book-card glass-panel-hover flex flex-col justify-between h-80 relative select-none">
+        <img class="w-full h-48 object-cover rounded-lg border border-slate-200/50 dark:border-slate-800/50" src="${bk.COVER || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400'}" />
+        ${editBtn}
+        <div class="mt-3 flex-1 flex flex-col justify-between">
+          <div>
+            <h5 class="font-extrabold text-slate-800 dark:text-white text-xs truncate leading-snug">${bk.JUDUL}</h5>
+            <p class="text-[10px] text-slate-400 font-bold truncate mt-0.5">${bk.PENULIS}</p>
+          </div>
+          <div class="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/30 dark:border-slate-800/30">
+            <span class="text-[8px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">${bk.KATEGORI}</span>
+            <span class="text-[9px] text-slate-400 font-semibold"><i class="fas fa-eye mr-1"></i>${bk.JUMLAH_DIBACA}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function filterBooksCatalog() {
+  renderBooksCatalog();
+}
+
+function populateCategoryDropdowns() {
+  const selects = ['filter-category-select', 'book-kategori-input'];
+  selects.forEach(id => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    
+    const originalVal = select.value;
+    
+    if (id === 'filter-category-select') {
+      select.innerHTML = '<option value="">Semua Kategori</option>' + cacheCategories.map(c => `<option value="${c.NAMA_KATEGORI}">${c.NAMA_KATEGORI}</option>`).join('');
+    } else {
+      select.innerHTML = cacheCategories.map(c => `<option value="${c.NAMA_KATEGORI}">${c.NAMA_KATEGORI}</option>`).join('');
+    }
+    
+    select.value = originalVal;
+  });
+}
+
+// Book info overlay modals
+let selectedBook = null;
+
+function openBookDetailModal(bookId) {
+  const bk = cacheBooks.find(b => b.ID_BUKU === bookId);
+  if (!bk) return;
+
+  selectedBook = bk;
+  document.getElementById('book-detail-modal').classList.remove('hidden');
+
+  document.getElementById('detail-book-cover').src = bk.COVER || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400';
+  document.getElementById('detail-book-category').innerText = bk.KATEGORI;
+  document.getElementById('detail-book-judul').innerText = bk.JUDUL;
+  document.getElementById('detail-book-penulis').innerText = `Karya: ${bk.PENULIS}`;
+  document.getElementById('detail-book-penerbit').innerText = bk.PENERBIT;
+  document.getElementById('detail-book-tahun').innerText = bk.TAHUN;
+  document.getElementById('detail-book-dibaca').innerText = `${bk.JUMLAH_DIBACA} kali dibaca`;
+  document.getElementById('detail-book-upload').innerText = new Date(bk.TANGGAL_UPLOAD).toLocaleDateString('id-ID');
+  document.getElementById('detail-book-deskripsi').innerText = bk.DESKRIPSI;
+
+  // Read button
+  const btnRead = document.getElementById('btn-read-online');
+  btnRead.onclick = () => {
+    closeBookDetailModal();
+    openReader(bk.LINK_PDF, bk.ID_BUKU, bk.JUDUL, bk.PENULIS);
+  };
+
+  // Download PDF validation button
+  const btnDownload = document.getElementById('btn-download-pdf');
+  if (appSettings.allowDownload && bk.LINK_PDF) {
+    btnDownload.classList.remove('hidden');
+    btnDownload.onclick = () => {
+      window.open(bk.LINK_PDF, '_blank');
+      showToast("Mengunduh", "Membuka link berkas dokumen PDF di tab baru.", "info");
+    };
+  } else {
+    btnDownload.classList.add('hidden');
+  }
+
+  // If administrator, append a delete action trigger or display it
+  const actionContainer = btnRead.parentElement;
+  let delBtn = document.getElementById('btn-admin-delete-book');
+  if (currentUser.ROLE === 'Admin') {
+    if (!delBtn) {
+      delBtn = document.createElement('button');
+      delBtn.id = 'btn-admin-delete-book';
+      delBtn.className = 'py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm flex items-center justify-center transition-all';
+      delBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+      actionContainer.appendChild(delBtn);
+    }
+    delBtn.onclick = () => deleteBookAction(bk.ID_BUKU);
+  } else {
+    if (delBtn) delBtn.remove();
+  }
+}
+
+function closeBookDetailModal() {
+  document.getElementById('book-detail-modal').classList.add('hidden');
+}
+
+// ==================== KATEGORI CONTROLLER ====================
+
+function openCategoryModal(catId = null) {
+  document.getElementById('category-modal').classList.remove('hidden');
+  document.getElementById('form-category').reset();
+  
+  if (catId) {
+    document.getElementById('category-modal-title').innerText = "Edit Kategori";
+    document.getElementById('category-id-field').value = catId;
+    const cat = cacheCategories.find(c => c.ID_KATEGORI === catId);
+    if (cat) {
+      document.getElementById('cat-nama-input').value = cat.NAMA_KATEGORI;
+      // Select Radio Icon
+      const iconRadios = document.getElementsByName('cat-icon');
+      iconRadios.forEach(rad => {
+        if (rad.value === cat.ICON) rad.checked = true;
+      });
+      // Select Radio color
+      const colorRadios = document.getElementsByName('cat-color');
+      colorRadios.forEach(rad => {
+        if (rad.value === cat.WARNA) rad.checked = true;
+      });
+    }
+  } else {
+    document.getElementById('category-modal-title').innerText = "Tambah Kategori Baru";
+    document.getElementById('category-id-field').value = "";
+  }
+}
+
+function closeCategoryModal() {
+  document.getElementById('category-modal').classList.add('hidden');
+}
+
+function handleCategorySubmit(event) {
+  event.preventDefault();
+  const catId = document.getElementById('category-id-field').value;
+  
+  // Get radios
+  const icon = document.querySelector('input[name="cat-icon"]:checked').value;
+  const warna = document.querySelector('input[name="cat-color"]:checked').value;
+
+  const catData = {
+    NAMA_KATEGORI: document.getElementById('cat-nama-input').value.trim(),
+    ICON: icon,
+    WARNA: warna
+  };
+
+  document.getElementById('global-loader').classList.remove('hidden');
+  const action = catId ? 'editCategory' : 'addCategory';
+  const args = catId ? [catId, catData] : [catData];
+
+  callBackend(action, args, (res) => {
+    document.getElementById('global-loader').classList.add('hidden');
+    if (res.success) {
+      showToast("Sukses", res.message, "success");
+      closeCategoryModal();
+      syncData();
+    } else {
+      showToast("Gagal", res.message, "danger");
+    }
+  });
+}
+
+function deleteCategoryAction(catId) {
+  if (confirm("Hapus kategori ini? Buku yang tergolong dalam kategori ini tidak akan terhapus.")) {
+    document.getElementById('global-loader').classList.remove('hidden');
+    callBackend('deleteCategory', [catId], (res) => {
+      document.getElementById('global-loader').classList.add('hidden');
+      if (res.success) {
+        showToast("Dihapus", res.message, "success");
+        syncData();
+      } else {
+        showToast("Gagal", res.message, "danger");
+      }
+    });
+  }
+}
+
+function renderCategoriesGrid() {
+  const grid = document.getElementById('categories-grid');
+  if (!grid) return;
+
+  if (cacheCategories.length === 0) {
+    grid.innerHTML = `<div class="col-span-full py-20 text-center text-slate-400 font-semibold">Belum ada kategori terdaftar</div>`;
+    return;
+  }
+
+  // Dynamic Tailwind accent color palettes
+  const colorMap = {
+    blue: { bg: 'from-blue-500 to-cyan-500', text: 'text-blue-500 bg-blue-100 dark:bg-blue-900/30' },
+    emerald: { bg: 'from-emerald-500 to-teal-500', text: 'text-emerald-500 bg-emerald-100 dark:bg-emerald-900/30' },
+    rose: { bg: 'from-rose-500 to-pink-500', text: 'text-rose-500 bg-rose-100 dark:bg-rose-900/30' },
+    amber: { bg: 'from-amber-500 to-orange-500', text: 'text-amber-500 bg-amber-100 dark:bg-amber-900/30' },
+    purple: { bg: 'from-purple-500 to-indigo-500', text: 'text-purple-500 bg-purple-100 dark:bg-purple-900/30' },
+    cyan: { bg: 'from-cyan-500 to-sky-500', text: 'text-cyan-500 bg-cyan-100 dark:bg-cyan-900/30' }
+  };
+
+  grid.innerHTML = cacheCategories.map(c => {
+    const cPreset = colorMap[c.WARNA] || colorMap.blue;
+    const actions = currentUser.ROLE === 'Admin' ? `
+      <div class="flex items-center gap-2 border-t border-slate-200/50 dark:border-slate-800/50 pt-3">
+        <button onclick="openCategoryModal('${c.ID_KATEGORI}')" class="flex-1 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-600 dark:text-slate-400 hover:text-blue-500 font-bold rounded-lg text-xs transition-all flex items-center justify-center gap-1">
+          <i class="fas fa-edit"></i> Edit
+        </button>
+        <button onclick="deleteCategoryAction('${c.ID_KATEGORI}')" class="w-8 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/20 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg text-xs transition-all flex items-center justify-center">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+    ` : '';
+
+    return `
+      <div class="glass-panel p-5 flex flex-col justify-between h-48 select-none glass-panel-hover">
+        <div class="flex items-start justify-between">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr ${cPreset.bg} text-white flex items-center justify-center shadow-md">
+            <i class="fas ${c.ICON} text-lg"></i>
+          </div>
+          <span class="text-[9px] font-bold text-slate-400">${c.ID_KATEGORI}</span>
+        </div>
+        <div class="my-3">
+          <h4 class="font-extrabold text-slate-800 dark:text-white text-base truncate">${c.NAMA_KATEGORI}</h4>
+          <p class="text-[10px] text-slate-400 mt-0.5">Kategori Klasifikasi</p>
+        </div>
+        ${actions}
+      </div>
+    `;
+  }).join('');
+}
+
+// ==================== ANGGOTA & DIGITAL CARD CONTROLLER ====================
+
+let memberUploadFotoBase64 = null;
+let memberUploadFotoMime = null;
+
+function openMemberModal(memId = null) {
+  document.getElementById('member-modal').classList.remove('hidden');
+  document.getElementById('form-member').reset();
+  document.getElementById('mem-foto-preview-container').classList.add('hidden');
+  document.getElementById('mem-foto-preview').src = "";
+  memberUploadFotoBase64 = null;
+
+  if (memId) {
+    document.getElementById('member-modal-title').innerText = "Edit Anggota";
+    document.getElementById('member-id-field').value = memId;
+    document.getElementById('mem-pass-container').classList.add('hidden');
+    document.getElementById('mem-password-input').removeAttribute('required');
+
+    const m = cacheMembers.find(mem => mem.ID_USER === memId);
+    if (m) {
+      document.getElementById('mem-nama-input').value = m.NAMA;
+      document.getElementById('mem-username-input').value = m.USERNAME;
+      document.getElementById('mem-role-input').value = m.ROLE;
+      document.getElementById('mem-kelas-input').value = m.KELAS;
+      document.getElementById('mem-status-input').value = m.STATUS;
+      
+      if (m.FOTO) {
+        document.getElementById('mem-foto-preview-container').classList.remove('hidden');
+        document.getElementById('mem-foto-preview').src = m.FOTO;
+      }
+    }
+  } else {
+    document.getElementById('member-modal-title').innerText = "Tambah Anggota Baru";
+    document.getElementById('member-id-field').value = "";
+    document.getElementById('mem-pass-container').classList.remove('hidden');
+    document.getElementById('mem-password-input').setAttribute('required', 'true');
+  }
+}
+
+function closeMemberModal() {
+  document.getElementById('member-modal').classList.add('hidden');
+}
+
+function previewMemFotoUpload(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      memberUploadFotoBase64 = e.target.result;
+      memberUploadFotoMime = file.type;
+      document.getElementById('mem-foto-preview-container').classList.remove('hidden');
+      document.getElementById('mem-foto-preview').src = e.target.result;
+    }
+    reader.readAsDataURL(file);
+  }
+}
+
+function handleMemberSubmit(event) {
+  event.preventDefault();
+  const memId = document.getElementById('member-id-field').value;
+
+  const memData = {
+    NAMA: document.getElementById('mem-nama-input').value.trim(),
+    USERNAME: document.getElementById('mem-username-input').value.trim(),
+    ROLE: document.getElementById('mem-role-input').value,
+    KELAS: document.getElementById('mem-kelas-input').value.trim(),
+    STATUS: document.getElementById('mem-status-input').value
+  };
+
+  const pass = document.getElementById('mem-password-input').value;
+  if (!memId || pass) memData.PASSWORD = pass;
+
+  if (memberUploadFotoBase64) {
+    memData.PHOTO_BASE64 = memberUploadFotoBase64;
+    memData.PHOTO_MIME = memberUploadFotoMime;
+  }
+
+  document.getElementById('global-loader').classList.remove('hidden');
+  const action = memId ? 'editMember' : 'addMember';
+  const args = memId ? [memId, memData] : [memData];
+
+  callBackend(action, args, (res) => {
+    document.getElementById('global-loader').classList.add('hidden');
+    if (res.success) {
+      showToast("Sukses", res.message, "success");
+      closeMemberModal();
+      syncData();
+    } else {
+      showToast("Gagal", res.message, "danger");
+    }
+  });
+}
+
+function deleteMemberAction(memId) {
+  if (confirm("Apakah Anda yakin ingin menghapus keanggotaan user ini?")) {
+    document.getElementById('global-loader').classList.remove('hidden');
+    callBackend('deleteMember', [memId], (res) => {
+      document.getElementById('global-loader').classList.add('hidden');
+      if (res.success) {
+        showToast("Dihapus", res.message, "success");
+        syncData();
+      } else {
+        showToast("Gagal", res.message, "danger");
+      }
+    });
+  }
+}
+
+function resetMemberPasswordAction(memId) {
+  if (confirm("Reset password anggota ini ke password default 'pembaca123'?")) {
+    document.getElementById('global-loader').classList.remove('hidden');
+    callBackend('resetMemberPassword', [memId], (res) => {
+      document.getElementById('global-loader').classList.add('hidden');
+      if (res.success) {
+        showToast("Reset Berhasil", "Password di-reset ke 'pembaca123'", "success");
+      } else {
+        showToast("Gagal", res.message, "danger");
+      }
+    });
+  }
+}
+
+function renderMembersTable() {
+  const body = document.getElementById('members-table-body');
+  if (!body) return;
+
+  const searchQuery = document.getElementById('search-member-input').value.toLowerCase();
+  
+  let filtered = cacheMembers;
+  if (searchQuery) {
+    filtered = filtered.filter(m => 
+      m.NAMA.toLowerCase().includes(searchQuery) ||
+      m.USERNAME.toLowerCase().includes(searchQuery) ||
+      m.ID_USER.toLowerCase().includes(searchQuery) ||
+      m.KELAS.toLowerCase().includes(searchQuery)
+    );
+  }
+
+  document.getElementById('member-count-label').innerText = filtered.length;
+
+  if (filtered.length === 0) {
+    body.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-slate-400 font-semibold">Data anggota tidak ditemukan</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(m => {
+    const avatar = m.FOTO || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.NAMA)}&background=3b82f6&color=fff&bold=true`;
+    const dateFormatted = new Date(m.TANGGAL_DAFTAR).toLocaleDateString('id-ID');
+    const badgeStatus = m.STATUS === 'Aktif' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400';
+    
+    return `
+      <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-800/30 transition-all">
+        <td class="py-4 px-6 flex items-center gap-3">
+          <img class="w-10 h-10 rounded-full object-cover border border-slate-200" src="${avatar}" />
+          <div>
+            <h5 class="font-extrabold text-slate-800 dark:text-white leading-tight">${m.NAMA}</h5>
+            <span class="text-[10px] text-slate-400 block mt-0.5">Daftar: ${dateFormatted}</span>
+          </div>
+        </td>
+        <td class="py-4 px-6">
+          <span class="text-xs font-bold text-slate-500 block">${m.ID_USER}</span>
+          <span class="text-[10px] font-semibold text-slate-400">@${m.USERNAME}</span>
+        </td>
+        <td class="py-4 px-6">
+          <span class="px-2 py-0.5 text-[9px] font-extrabold rounded bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">${m.ROLE}</span>
+          <span class="text-xs font-bold text-slate-500 block mt-1">${m.KELAS}</span>
+        </td>
+        <td class="py-4 px-6">
+          <span class="px-2 py-1 text-[9px] font-extrabold rounded-full ${badgeStatus}">${m.STATUS}</span>
+        </td>
+        <td class="py-4 px-6">
+          <div class="flex items-center justify-center gap-2">
+            <!-- Cetak ID Card -->
+            <button onclick="openIdCardModal('${m.ID_USER}')" title="Cetak ID Card Digital" class="w-8 h-8 rounded-lg bg-blue-500/10 hover:bg-blue-500 text-blue-500 hover:text-white flex items-center justify-center transition-all">
+              <i class="fas fa-id-card text-xs"></i>
+            </button>
+            <!-- Edit -->
+            <button onclick="openMemberModal('${m.ID_USER}')" title="Edit Data" class="w-8 h-8 rounded-lg bg-amber-500/10 hover:bg-amber-500 text-amber-500 hover:text-white flex items-center justify-center transition-all">
+              <i class="fas fa-edit text-xs"></i>
+            </button>
+            <!-- Reset Pass -->
+            <button onclick="resetMemberPasswordAction('${m.ID_USER}')" title="Reset Password" class="w-8 h-8 rounded-lg bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white flex items-center justify-center transition-all">
+              <i class="fas fa-key text-xs"></i>
+            </button>
+            <!-- Delete -->
+            <button onclick="deleteMemberAction('${m.ID_USER}')" title="Hapus Anggota" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white flex items-center justify-center transition-all">
+              <i class="fas fa-trash-alt text-xs"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterMembersTable() {
+  renderMembersTable();
+}
+
+/**
+ * Pops open digital credit-card sized library card, dynamically loads barcode and QRCode
+ */
+let selectedCardUser = null;
+
+function openIdCardModal(userId) {
+  const m = cacheMembers.find(mem => mem.ID_USER === userId) || currentUser;
+  if (!m) return;
+
+  selectedCardUser = m;
+  document.getElementById('idcard-modal').classList.remove('hidden');
+
+  // Fill in content
+  document.getElementById('card-user-nama').innerText = m.NAMA;
+  document.getElementById('card-user-id').innerText = m.ID_USER;
+  document.getElementById('card-user-kelas').innerText = m.KELAS;
+
+  if (m.FOTO) {
+    document.getElementById('card-user-foto').src = m.FOTO;
+  } else {
+    document.getElementById('card-user-foto').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.NAMA)}&background=3b82f6&color=fff&bold=true`;
+  }
+
+  // Clear previous barcode & qrcode to avoid duplication overrides
+  const qrContainer = document.getElementById('card-qrcode');
+  qrContainer.innerHTML = '';
+  
+  // Render fresh dynamic QR Code
+  new QRCode(qrContainer, {
+    text: JSON.stringify({ id: m.ID_USER, name: m.NAMA }),
+    width: 48,
+    height: 48,
+    colorDark : "#000000",
+    colorLight : "#ffffff",
+    correctLevel : QRCode.CorrectLevel.H
+  });
+
+  // Render fresh dynamic Barcode using JsBarcode
+  setTimeout(() => {
+    JsBarcode("#card-barcode", m.ID_USER, {
+      format: "CODE128",
+      width: 1.5,
+      height: 25,
+      displayValue: true,
+      textPosition: "bottom",
+      fontOptions: "bold",
+      fontSize: 8,
+      background: "transparent",
+      lineColor: "#ffffff"
+    });
+  }, 100);
+}
+
+function printMyCard() {
+  openIdCardModal(currentUser.ID_USER);
+}
+
+function closeIdCardModal() {
+  document.getElementById('idcard-modal').classList.add('hidden');
+}
+
+/**
+ * Client side PNG conversion and downloads
+ */
+function downloadIdCardPng() {
+  if (!selectedCardUser) return;
+  showToast("Mengunduh", "Mempersiapkan gambar kartu digital...", "info");
+  
+  const card = document.getElementById('digital-id-card');
+  
+  // Standard Client-side canvas printing for download
+  const canvas = document.createElement('canvas');
+  canvas.width = 700;
+  canvas.height = 440;
+  const ctx = canvas.getContext('2d');
+  
+  // Renders beautiful card graphics client-side
+  const gradient = ctx.createLinearGradient(0, 0, 700, 440);
+  gradient.addColorStop(0, '#1e3a8a');
+  gradient.addColorStop(1, '#0d1b3e');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 700, 440);
+  
+  // Outer Border
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(4, 4, 692, 432);
+  
+  // Typography
+  ctx.fillStyle = '#60a5fa';
+  ctx.font = 'bold 24px Poppins, Inter, Arial';
+  ctx.fillText(appSettings.libraryName.toUpperCase(), 30, 50);
+  
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = 'bold 14px Inter, Arial';
+  ctx.fillText("KARTU ANGGOTA DIGITAL", 480, 50);
+  
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(30, 70);
+  ctx.lineTo(670, 70);
+  ctx.stroke();
+
+  // User Photo drawing placeholder or avatar
+  const avatarImg = new Image();
+  avatarImg.crossOrigin = "anonymous";
+  
+  avatarImg.onload = function() {
+    // Draw rounded clipping path for profile
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(100, 180, 60, 0, Math.PI * 2, true);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(avatarImg, 40, 120, 120, 120);
+    ctx.restore();
+    
+    // Draw user info text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 26px Poppins, Inter, Arial';
+    ctx.fillText(selectedCardUser.NAMA, 190, 170);
+    
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 12px Inter, Arial';
+    ctx.fillText("ID ANGGOTA", 190, 220);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px Inter, Arial';
+    ctx.fillText(selectedCardUser.ID_USER, 190, 245);
+    
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 12px Inter, Arial';
+    ctx.fillText("KELAS / JABATAN", 350, 220);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 16px Inter, Arial';
+    ctx.fillText(selectedCardUser.KELAS, 350, 245);
+    
+    // Bottom Barcode text
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(30, 310, 640, 90);
+    
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = 'bold 14px Inter, Arial';
+    ctx.fillText("STATUS: AKTIF", 50, 360);
+    ctx.fillText("BERLAKU: SELAMA AKTIF Keanggotaan", 320, 360);
+    
+    // Export PNG
+    const link = document.createElement('a');
+    link.download = `Kartu_Anggota_${selectedCardUser.NAMA.replace(/\s+/g, '_')}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+    showToast("Berhasil", "Gambar kartu digital diunduh!", "success");
+  };
+
+  avatarImg.onerror = function() {
+    // If failed (CORS block), draw fallback icon
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath();
+    ctx.arc(100, 180, 60, 0, Math.PI * 2, true);
+    ctx.fill();
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 40px FontAwesome, Arial';
+    ctx.fillText("👤", 75, 195);
+    avatarImg.onload(); // resume drawing fields
+  };
+
+  avatarImg.src = selectedCardUser.FOTO || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedCardUser.NAMA)}&background=3b82f6&color=fff&bold=true`;
+}
+
+function printIdCard() {
+  // Clones card modal layout into printable area precisely
+  const printArea = document.getElementById('printable-card-area');
+  const card = document.getElementById('digital-id-card');
+  
+  // Clone element
+  const clone = card.cloneNode(true);
+  
+  // Copy barcode canvas content correctly
+  const originBarcode = document.getElementById('card-barcode');
+  const destBarcode = clone.querySelector('#card-barcode');
+  
+  printArea.innerHTML = '';
+  printArea.appendChild(clone);
+  
+  setTimeout(() => {
+    window.print();
+  }, 300);
+}
+
+// ==================== PDF READER ENGINE ====================
+
+function openReader(pdfUrl, bookId, bookTitle, bookAuthor) {
+  if (pdfIsLoading) return;
+  
+  pdfCurrentBookId = bookId;
+  pdfCurrentBookTitle = bookTitle;
+  document.getElementById('reader-book-title').innerText = bookTitle;
+  document.getElementById('reader-book-author').innerText = `Karya: ${bookAuthor}`;
+
+  // Reset bookmark styling state
+  document.getElementById('btn-reader-bookmark').classList.remove('text-rose-500');
+
+  // Change View to PDF Reader
+  navigateTo('reader');
+  
+  // Show loading overlay
+  document.getElementById('pdf-loading-overlay').classList.remove('hidden');
+  pdfIsLoading = true;
+
+  // Retrieve bookmark page memory from localStorage
+  const savedPage = localStorage.getItem(`pustaka_read_page_${currentUser.ID_USER}_${bookId}`);
+  pdfPageNum = savedPage ? parseInt(savedPage) : 1;
+
+  // Validate pdf link
+  if (!pdfUrl || pdfUrl.trim() === "") {
+    showToast("Gagal Membaca", "Link berkas PDF kosong atau tidak valid!", "danger");
+    document.getElementById('pdf-loading-overlay').classList.add('hidden');
+    pdfIsLoading = false;
+    navigateTo('buku');
+    return;
+  }
+
+  // Handle PDF loading using pdf.js
+  pdfjsLib.getDocument(pdfUrl).promise.then(function(pdfDoc_) {
+    pdfDoc = pdfDoc_;
+    document.getElementById('pdf-total-pages').innerText = pdfDoc.numPages;
+    
+    // Bounds validation
+    if (pdfPageNum > pdfDoc.numPages) pdfPageNum = 1;
+    
+    // Draw page
+    renderPdfPage(pdfPageNum);
+    
+    // Check bookmark state
+    checkBookmarkState();
+
+    // Increment read counter in DB
+    callBackend('incrementReadCount', [bookId], () => {
+      // Register activity log in RIWAYAT_BACA sheet
+      callBackend('addHistory', [currentUser.NAMA, bookId, bookTitle], () => {});
+    });
+
+  }).catch(function(error) {
+    console.error("PDF.js loading error: ", error);
+    showToast("PDF Error", "Gagal memuat dokumen PDF: " + error.message, "danger");
+    document.getElementById('pdf-loading-overlay').classList.add('hidden');
+    pdfIsLoading = false;
+    navigateTo('buku');
+  });
+}
+
+function renderPdfPage(num) {
+  if (!pdfDoc) return;
+  pdfIsLoading = true;
+  document.getElementById('pdf-loading-overlay').classList.remove('hidden');
+  document.getElementById('pdf-current-page').innerText = num;
+
+  // Save current page to reader memory
+  localStorage.setItem(`pustaka_read_page_${currentUser.ID_USER}_${pdfCurrentBookId}`, num);
+
+  pdfDoc.getPage(num).then(function(page) {
+    const viewport = page.getViewport({ scale: pdfScale });
+    pdfCanvas.height = viewport.height;
+    pdfCanvas.width = viewport.width;
+
+    const renderContext = {
+      canvasContext: pdfCtx,
+      viewport: viewport
+    };
+    
+    page.render(renderContext).promise.then(function() {
+      pdfIsLoading = false;
+      document.getElementById('pdf-loading-overlay').classList.add('hidden');
+    });
+  });
+}
+
+function pdfPrevPage() {
+  if (!pdfDoc || pdfPageNum <= 1 || pdfIsLoading) return;
+  pdfPageNum--;
+  renderPdfPage(pdfPageNum);
+  checkBookmarkState();
+}
+
+function pdfNextPage() {
+  if (!pdfDoc || pdfPageNum >= pdfDoc.numPages || pdfIsLoading) return;
+  pdfPageNum++;
+  renderPdfPage(pdfPageNum);
+  checkBookmarkState();
+}
+
+function pdfZoomOut() {
+  if (pdfScale <= 0.5) return;
+  pdfScale -= 0.25;
+  document.getElementById('pdf-zoom-level').innerText = `${Math.round(pdfScale * 100)}%`;
+  renderPdfPage(pdfPageNum);
+}
+
+function pdfZoomIn() {
+  if (pdfScale >= 3.0) return;
+  pdfScale += 0.25;
+  document.getElementById('pdf-zoom-level').innerText = `${Math.round(pdfScale * 100)}%`;
+  renderPdfPage(pdfPageNum);
+}
+
+function togglePdfBookmark() {
+  if (!pdfCurrentBookId) return;
+  const bookmarkKey = `pustaka_bookmark_${currentUser.ID_USER}_${pdfCurrentBookId}`;
+  const bookmarks = JSON.parse(localStorage.getItem(bookmarkKey) || "[]");
+  
+  const index = bookmarks.indexOf(pdfPageNum);
+  if (index === -1) {
+    bookmarks.push(pdfPageNum);
+    localStorage.setItem(bookmarkKey, JSON.stringify(bookmarks));
+    showToast("Bookmark Disimpan", `Halaman ${pdfPageNum} berhasil ditandai!`, "success");
+    document.getElementById('btn-reader-bookmark').classList.add('text-rose-500');
+  } else {
+    bookmarks.splice(index, 1);
+    localStorage.setItem(bookmarkKey, JSON.stringify(bookmarks));
+    showToast("Bookmark Dihapus", `Penanda halaman ${pdfPageNum} dihapus.`, "info");
+    document.getElementById('btn-reader-bookmark').classList.remove('text-rose-500');
+  }
+}
+
+function checkBookmarkState() {
+  if (!pdfCurrentBookId) return;
+  const bookmarkKey = `pustaka_bookmark_${currentUser.ID_USER}_${pdfCurrentBookId}`;
+  const bookmarks = JSON.parse(localStorage.getItem(bookmarkKey) || "[]");
+  
+  const btn = document.getElementById('btn-reader-bookmark');
+  if (bookmarks.includes(pdfPageNum)) {
+    btn.classList.add('text-rose-500');
+  } else {
+    btn.classList.remove('text-rose-500');
+  }
+}
+
+function toggleReaderDarkMode() {
+  const container = document.getElementById('pdf-canvas-container');
+  container.classList.toggle('pdf-dark-mode');
+  
+  const isDark = container.classList.contains('pdf-dark-mode');
+  const btn = document.getElementById('btn-reader-dark');
+  
+  if (isDark) {
+    btn.innerHTML = '<i class="fas fa-sun"></i>';
+    showToast("Mode Gelap", "Kontras warna PDF diinversi untuk pembacaan nyaman.", "info");
+  } else {
+    btn.innerHTML = '<i class="fas fa-moon"></i>';
+  }
+}
+
+function toggleReaderFullscreen() {
+  const elem = document.getElementById('reader-viewport-wrapper');
+  if (!document.fullscreenElement) {
+    elem.requestFullscreen().catch(err => {
+      showToast("Error", "Gagal mengaktifkan Layar Penuh.", "warning");
+    });
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+function closeReader() {
+  pdfDoc = null;
+  navigateTo('buku');
+}
+
+// ==================== EXPORT DATA ====================
+
+function renderHistoryTable() {
+  const body = document.getElementById('history-table-body');
+  if (!body) return;
+
+  if (cacheHistory.length === 0) {
+    body.innerHTML = `<tr><td colspan="4" class="py-12 text-center text-slate-400 font-semibold">Belum ada riwayat membaca terdaftar</td></tr>`;
+    return;
+  }
+
+  // Sort newest first
+  const sorted = [...cacheHistory].sort((a, b) => new Date(b.WAKTU_BACA) - new Date(a.WAKTU_BACA));
+
+  body.innerHTML = sorted.map(h => {
+    const dateTime = new Date(h.WAKTU_BACA).toLocaleString('id-ID');
+    return `
+      <tr class="hover:bg-slate-100/30 dark:hover:bg-slate-800/30 transition-all">
+        <td class="py-4 px-6 font-bold text-slate-500">${h.ID}</td>
+        <td class="py-4 px-6 font-semibold text-slate-800 dark:text-white">${h.USER}</td>
+        <td class="py-4 px-6 text-blue-600 dark:text-blue-400 font-bold">${h.JUDUL}</td>
+        <td class="py-4 px-6 text-xs text-slate-400 font-bold">${dateTime}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/**
+ * Downloads RIWAYAT_BACA to professional XLSX sheet using xlsx.js library
+ */
+function exportHistoryExcel() {
+  if (cacheHistory.length === 0) {
+    showToast("Export Gagal", "Tidak ada data riwayat untuk diekspor.", "warning");
+    return;
+  }
+
+  showToast("Exporting", "Mempersiapkan file Excel laporan...", "info");
+
+  const formatted = cacheHistory.map(h => ({
+    "ID Riwayat": h.ID,
+    "Nama Pembaca": h.USER,
+    "Judul Buku": h.JUDUL,
+    "ID Buku": h.ID_BUKU,
+    "Waktu Baca": new Date(h.WAKTU_BACA).toLocaleString('id-ID')
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(formatted);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Riwayat Baca");
+  
+  // Download file
+  XLSX.writeFile(workbook, `Laporan_Riwayat_Membaca_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast("Berhasil", "Laporan riwayat diunduh dalam format Excel!", "success");
+}
+
+// ==================== APP BRANDING & CONFIGURATION ====================
+
+function handleSettingsSubmit(event) {
+  event.preventDefault();
+  
+  const settings = {
+    libraryName: document.getElementById('set-lib-name').value.trim(),
+    logoUrl: document.getElementById('set-logo-url').value.trim(),
+    themeColor: document.getElementById('set-theme-color').value,
+    allowDownload: document.getElementById('set-allow-download').value === "true"
+  };
+
+  document.getElementById('global-loader').classList.remove('hidden');
+
+  callBackend('saveAppSettings', [settings], (res) => {
+    document.getElementById('global-loader').classList.add('hidden');
+    if (res.success) {
+      showToast("Tersimpan", res.message, "success");
+      appSettings = settings;
+      applyBrandingSettings();
+      syncData();
+    } else {
+      showToast("Gagal", res.message, "danger");
+    }
+  });
+}
+
+function triggerAppBackup() {
+  document.getElementById('global-loader').classList.remove('hidden');
+  callBackend('backupDatabase', [], (res) => {
+    document.getElementById('global-loader').classList.add('hidden');
+    if (res.success) {
+      showToast("Cadangan Siap", "Database disalin ke Drive!", "success");
+      
+      // Auto trigger local file download of JSON dump
+      const btn = document.getElementById('btn-local-download-backup');
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(res.backupData);
+      btn.setAttribute("href", dataStr);
+      btn.setAttribute("download", `Backup_Pustaka_${new Date().toISOString().slice(0,10)}.json`);
+      btn.style.display = "inline-flex";
+      
+      // Auto click
+      btn.click();
+    } else {
+      showToast("Backup Gagal", res.message, "danger");
+    }
+  });
+}
+
+function triggerAppRestore(input) {
+  if (input.files && input.files[0]) {
+    const file = input.files[0];
+    if (confirm(`Pulihkan database menggunakan cadangan ${file.name}? Data saat ini akan ditimpa!`)) {
+      document.getElementById('global-loader').classList.remove('hidden');
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        callBackend('restoreDatabase', [e.target.result], (res) => {
+          document.getElementById('global-loader').classList.add('hidden');
+          if (res.success) {
+            showToast("Sukses Restore", res.message, "success");
+            input.value = "";
+            syncData();
+          } else {
+            showToast("Gagal Restore", res.message, "danger");
+          }
+        });
+      };
+      reader.readAsText(file);
+    } else {
+      input.value = "";
+    }
+  }
+}
+
+// ==================== VISUAL WIDGETS (TOASTS & DARKMODE) ====================
+
+function toggleDarkMode() {
+  const doc = document.documentElement;
+  doc.classList.toggle('dark');
+  
+  if (doc.classList.contains('dark')) {
+    localStorage.setItem('pustaka-theme', 'dark');
+  } else {
+    localStorage.setItem('pustaka-theme', 'light');
+  }
+}
+
+function showToast(title, message, type = "info") {
+  const toast = document.getElementById('toast-notify');
+  const icon = document.getElementById('toast-icon');
+  
+  document.getElementById('toast-title').innerText = title;
+  document.getElementById('toast-message').innerText = message;
+
+  // Customize icon and backgrounds based on toast types
+  toast.className = "toast-premium show";
+  if (type === "success") {
+    icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+    icon.className = "w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-sm";
+  } else if (type === "warning") {
+    icon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+    icon.className = "w-8 h-8 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center text-sm";
+  } else if (type === "danger") {
+    icon.innerHTML = '<i class="fas fa-times-circle"></i>';
+    icon.className = "w-8 h-8 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center text-sm";
+  } else {
+    icon.innerHTML = '<i class="fas fa-info-circle"></i>';
+    icon.className = "w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-sm";
+  }
+
+  // Slide down toast after 3 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3500);
+}
+
+// ==================== PWA INSTALLATION EVENT HANDLERS ====================
+
+function dismissPwaBanner() {
+  document.getElementById('pwa-install-banner').classList.add('hidden');
+}
+
+function installPwaApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        showToast("Instalasi", "Pustaka Digital Premium berhasil dipasang!", "success");
+      }
+      deferredPrompt = null;
+      dismissPwaBanner();
+    });
+  }
+}
+
+// ==================== GAS BACKEND API WRAPPER / LOCAL STORAGE OFFLINE FALLBACK ====================
+
+/**
+ * Executes a backend function via google.script.run.
+ * If running locally outside of the Google Apps Script container, it automatically 
+ * falls back to a complete simulated LocalStorage API database for instant debugging!
+ */
+function callBackend(funcName, args, callback) {
+  // If running inside Google Apps Script iframe environment
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    google.script.run
+      .withSuccessHandler(function(response) {
+        callback(response);
+      })
+      .withFailureHandler(function(error) {
+        console.error("GAS execution failure on " + funcName + ": ", error);
+        showToast("Kesalahan Jaringan", "Koneksi Apps Script terputus: " + error.message, "danger");
+        callback({ success: false, message: error.message });
+      })[funcName].apply(null, args);
+  } else {
+    // Run Simulated Mock Backend client-side for zero-error instant desktop testing!
+    console.info(`[MOCK DB RUN] Invoking: ${funcName}`, args);
+    setTimeout(() => {
+      try {
+        const res = mockBackendDatabase(funcName, args);
+        callback(res);
+      } catch (err) {
+        console.error("Mock Execution failure: ", err);
+        callback({ success: false, message: err.message });
+      }
+    }, 500);
+  }
+}
+
+/**
+ * Complete simulated backend executing CRUD queries in localStorage databases
+ */
+function mockBackendDatabase(funcName, args) {
+  // Check tables presence
+  if (!localStorage.getItem('mock_USERS')) {
+    // Populate demo users
+    localStorage.setItem('mock_USERS', JSON.stringify([
+      { ID_USER: "USR-001", NAMA: "Super Administrator", USERNAME: "admin", PASSWORD: "admin123", ROLE: "Admin", KELAS: "IT Support", STATUS: "Aktif", TANGGAL_DAFTAR: new Date().toISOString() },
+      { ID_USER: "USR-002", NAMA: "Pembaca Demo", USERNAME: "pembaca", PASSWORD: "pembaca123", ROLE: "Pembaca", KELAS: "Kelas XII-IPA", STATUS: "Aktif", TANGGAL_DAFTAR: new Date().toISOString() }
+    ]));
+    
+    // Populate demo books
+    localStorage.setItem('mock_BUKU', JSON.stringify([
+      { 
+        ID_BUKU: "BKP-001", 
+        JUDUL: "Pedoman Penggunaan Pustaka Digital Premium", 
+        PENULIS: "Tim Pengembang", 
+        PENERBIT: "Pustaka Press", 
+        TAHUN: "2026", 
+        KATEGORI: "Petunjuk", 
+        DESKRIPSI: "Panduan lengkap mengenai tata tertib dan cara memaksimalkan fitur Pustaka Digital Premium.",
+        COVER: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400",
+        LINK_PDF: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        JUMLAH_DIBACA: 12,
+        STATUS: "Aktif",
+        TANGGAL_UPLOAD: new Date().toISOString()
+      },
+      { 
+        ID_BUKU: "BKP-002", 
+        JUDUL: "Dasar Pengolahan Data dan Algoritma Modern", 
+        PENULIS: "Prof. Dr. Ir. Sutarman", 
+        PENERBIT: "Sains Media", 
+        TAHUN: "2025", 
+        KATEGORI: "Teknologi", 
+        DESKRIPSI: "Buku pegangan perkuliahan sains komputer untuk pemahaman struktur dasar basis data dan kompleksitas algoritma.",
+        COVER: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&q=80&w=400",
+        LINK_PDF: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        JUMLAH_DIBACA: 25,
+        STATUS: "Aktif",
+        TANGGAL_UPLOAD: new Date().toISOString()
+      }
+    ]));
+
+    // Populate demo categories
+    localStorage.setItem('mock_KATEGORI', JSON.stringify([
+      { ID_KATEGORI: "CAT-001", NAMA_KATEGORI: "Petunjuk", ICON: "fa-info-circle", WARNA: "indigo" },
+      { ID_KATEGORI: "CAT-002", NAMA_KATEGORI: "Sains", ICON: "fa-flask", WARNA: "emerald" },
+      { ID_KATEGORI: "CAT-003", NAMA_KATEGORI: "Teknologi", ICON: "fa-laptop-code", WARNA: "blue" },
+      { ID_KATEGORI: "CAT-004", NAMA_KATEGORI: "Sastra & Novel", ICON: "fa-book-open", WARNA: "rose" }
+    ]));
+
+    // Populate demo histories
+    localStorage.setItem('mock_RIWAYAT_BACA', JSON.stringify([
+      { ID: "RWY-0001", USER: "Pembaca Demo", ID_BUKU: "BKP-001", JUDUL: "Pedoman Penggunaan Pustaka Digital Premium", WAKTU_BACA: new Date().toISOString() }
+    ]));
+
+    // Save initial mock app settings
+    localStorage.setItem('mock_SETTINGS', JSON.stringify(appSettings));
+  }
+
+  // Load datasets
+  const users = JSON.parse(localStorage.getItem('mock_USERS'));
+  const books = JSON.parse(localStorage.getItem('mock_BUKU'));
+  const categories = JSON.parse(localStorage.getItem('mock_KATEGORI'));
+  const history = JSON.parse(localStorage.getItem('mock_RIWAYAT_BACA'));
+  const settings = JSON.parse(localStorage.getItem('mock_SETTINGS'));
+
+  // Routings mock endpoints
+  switch(funcName) {
+    case 'loginUser': {
+      const u = users.find(x => x.USERNAME.toLowerCase() === args[0].toLowerCase() && x.PASSWORD === args[1]);
+      if (u) {
+        if (u.STATUS !== 'Aktif') return { success: false, message: "Akun Anda dinonaktifkan!" };
+        const cleanCopy = Object.assign({}, u);
+        delete cleanCopy.PASSWORD;
+        return { success: true, user: cleanCopy };
+      }
+      return { success: false, message: "Username atau Password salah!" };
+    }
+    case 'registerUser': {
+      const exists = users.some(x => x.USERNAME.toLowerCase() === args[0].USERNAME.toLowerCase());
+      if (exists) return { success: false, message: "Username sudah digunakan!" };
+      
+      const newId = "USR-" + String(users.length + 1).padStart(3, '0');
+      const newUser = {
+        ID_USER: newId,
+        NAMA: args[0].NAMA,
+        USERNAME: args[0].USERNAME,
+        PASSWORD: args[0].PASSWORD,
+        ROLE: args[0].ROLE,
+        KELAS: args[0].KELAS,
+        FOTO: args[0].PHOTO_BASE64 || "",
+        STATUS: "Aktif",
+        TANGGAL_DAFTAR: new Date().toISOString()
+      };
+      users.push(newUser);
+      localStorage.setItem('mock_USERS', JSON.stringify(users));
+      return { success: true, message: "Pendaftaran Berhasil!" };
+    }
+    case 'updateProfile': {
+      const idx = users.findIndex(x => x.ID_USER === args[0]);
+      if (idx === -1) return { success: false, message: "User tidak ditemukan!" };
+      
+      users[idx].NAMA = args[1].NAMA;
+      users[idx].KELAS = args[1].KELAS;
+      if (args[1].PASSWORD) users[idx].PASSWORD = args[1].PASSWORD;
+      if (args[1].PHOTO_BASE64) users[idx].FOTO = args[1].PHOTO_BASE64;
+      
+      localStorage.setItem('mock_USERS', JSON.stringify(users));
+      return { success: true, message: "Profil berhasil diperbarui!" };
+    }
+    case 'getAppSettings': {
+      return { success: true, data: settings };
+    }
+    case 'saveAppSettings': {
+      localStorage.setItem('mock_SETTINGS', JSON.stringify(args[0]));
+      return { success: true, message: "Pengaturan berhasil disimpan!" };
+    }
+    case 'getBooks': {
+      return { success: true, data: books };
+    }
+    case 'addBook': {
+      const newId = "BKP-" + String(books.length + 1).padStart(3, '0');
+      const newB = {
+        ID_BUKU: newId,
+        JUDUL: args[0].JUDUL,
+        PENULIS: args[0].PENULIS,
+        PENERBIT: args[0].PENERBIT,
+        TAHUN: args[0].TAHUN,
+        KATEGORI: args[0].KATEGORI,
+        DESKRIPSI: args[0].DESKRIPSI,
+        COVER: args[0].COVER_BASE64 || "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=400",
+        LINK_PDF: args[0].PDF_BASE64 ? "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" : (args[0].LINK_PDF || "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"),
+        JUMLAH_DIBACA: 0,
+        STATUS: args[0].STATUS || "Aktif",
+        TANGGAL_UPLOAD: new Date().toISOString()
+      };
+      books.push(newB);
+      localStorage.setItem('mock_BUKU', JSON.stringify(books));
+      return { success: true, message: "Buku berhasil ditambahkan!" };
+    }
+    case 'editBook': {
+      const idx = books.findIndex(x => x.ID_BUKU === args[0]);
+      if (idx === -1) return { success: false, message: "Buku tidak ditemukan!" };
+      
+      Object.assign(books[idx], args[1]);
+      if (args[1].COVER_BASE64) books[idx].COVER = args[1].COVER_BASE64;
+      if (args[1].PDF_BASE64) books[idx].LINK_PDF = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+      
+      localStorage.setItem('mock_BUKU', JSON.stringify(books));
+      return { success: true, message: "Buku berhasil diperbarui!" };
+    }
+    case 'deleteBook': {
+      const idx = books.findIndex(x => x.ID_BUKU === args[0]);
+      if (idx === -1) return { success: false, message: "Buku tidak ditemukan!" };
+      
+      books.splice(idx, 1);
+      localStorage.setItem('mock_BUKU', JSON.stringify(books));
+      return { success: true, message: "Buku berhasil dihapus!" };
+    }
+    case 'incrementReadCount': {
+      const idx = books.findIndex(x => x.ID_BUKU === args[0]);
+      if (idx !== -1) {
+        books[idx].JUMLAH_DIBACA = Number(books[idx].JUMLAH_DIBACA || 0) + 1;
+        localStorage.setItem('mock_BUKU', JSON.stringify(books));
+      }
+      return { success: true };
+    }
+    case 'getCategories': {
+      return { success: true, data: categories };
+    }
+    case 'addCategory': {
+      const newId = "CAT-" + String(categories.length + 1).padStart(3, '0');
+      categories.push({
+        ID_KATEGORI: newId,
+        NAMA_KATEGORI: args[0].NAMA_KATEGORI,
+        ICON: args[0].ICON,
+        WARNA: args[0].WARNA
+      });
+      localStorage.setItem('mock_KATEGORI', JSON.stringify(categories));
+      return { success: true, message: "Kategori berhasil ditambahkan!" };
+    }
+    case 'editCategory': {
+      const idx = categories.findIndex(x => x.ID_KATEGORI === args[0]);
+      if (idx === -1) return { success: false, message: "Kategori tidak ditemukan!" };
+      
+      Object.assign(categories[idx], args[1]);
+      localStorage.setItem('mock_KATEGORI', JSON.stringify(categories));
+      return { success: true, message: "Kategori berhasil diperbarui!" };
+    }
+    case 'deleteCategory': {
+      const idx = categories.findIndex(x => x.ID_KATEGORI === args[0]);
+      if (idx === -1) return { success: false, message: "Kategori tidak ditemukan!" };
+      
+      categories.splice(idx, 1);
+      localStorage.setItem('mock_KATEGORI', JSON.stringify(categories));
+      return { success: true, message: "Kategori berhasil dihapus!" };
+    }
+    case 'getMembers': {
+      const list = users.map(u => {
+        const copy = Object.assign({}, u);
+        delete copy.PASSWORD;
+        return copy;
+      });
+      return { success: true, data: list };
+    }
+    case 'addMember': {
+      const exists = users.some(x => x.USERNAME.toLowerCase() === args[0].USERNAME.toLowerCase());
+      if (exists) return { success: false, message: "Username sudah digunakan!" };
+      
+      const newId = "USR-" + String(users.length + 1).padStart(3, '0');
+      users.push({
+        ID_USER: newId,
+        NAMA: args[0].NAMA,
+        USERNAME: args[0].USERNAME,
+        PASSWORD: args[0].PASSWORD || "pembaca123",
+        ROLE: args[0].ROLE || "Pembaca",
+        KELAS: args[0].KELAS,
+        FOTO: args[0].PHOTO_BASE64 || "",
+        STATUS: args[0].STATUS || "Aktif",
+        TANGGAL_DAFTAR: new Date().toISOString()
+      });
+      localStorage.setItem('mock_USERS', JSON.stringify(users));
+      return { success: true, message: "Anggota berhasil ditambahkan!" };
+    }
+    case 'editMember': {
+      const idx = users.findIndex(x => x.ID_USER === args[0]);
+      if (idx === -1) return { success: false, message: "Anggota tidak ditemukan!" };
+      
+      Object.assign(users[idx], args[1]);
+      if (args[1].PASSWORD) users[idx].PASSWORD = args[1].PASSWORD;
+      if (args[1].PHOTO_BASE64) users[idx].FOTO = args[1].PHOTO_BASE64;
+      
+      localStorage.setItem('mock_USERS', JSON.stringify(users));
+      return { success: true, message: "Anggota berhasil diperbarui!" };
+    }
+    case 'deleteMember': {
+      const idx = users.findIndex(x => x.ID_USER === args[0]);
+      if (idx === -1) return { success: false, message: "Anggota tidak ditemukan!" };
+      
+      users.splice(idx, 1);
+      localStorage.setItem('mock_USERS', JSON.stringify(users));
+      return { success: true, message: "Anggota berhasil dihapus!" };
+    }
+    case 'resetMemberPassword': {
+      const idx = users.findIndex(x => x.ID_USER === args[0]);
+      if (idx !== -1) {
+        users[idx].PASSWORD = "pembaca123";
+        localStorage.setItem('mock_USERS', JSON.stringify(users));
+      }
+      return { success: true };
+    }
+    case 'getHistory': {
+      return { success: true, data: history };
+    }
+    case 'addHistory': {
+      const newId = "RWY-" + String(history.length + 1).padStart(4, '0');
+      history.push({
+        ID: newId,
+        USER: args[0],
+        ID_BUKU: args[1],
+        JUDUL: args[2],
+        WAKTU_BACA: new Date().toISOString()
+      });
+      localStorage.setItem('mock_RIWAYAT_BACA', JSON.stringify(history));
+      return { success: true };
+    }
+    case 'backupDatabase': {
+      const snapshot = {
+        USERS: users,
+        BUKU: books,
+        KATEGORI: categories,
+        RIWAYAT_BACA: history,
+        backupTime: new Date().toISOString()
+      };
+      const str = JSON.stringify(snapshot, null, 2);
+      return { success: true, backupData: str };
+    }
+    case 'restoreDatabase': {
+      const restored = JSON.parse(args[0]);
+      if (restored.USERS) localStorage.setItem('mock_USERS', JSON.stringify(restored.USERS));
+      if (restored.BUKU) localStorage.setItem('mock_BUKU', JSON.stringify(restored.BUKU));
+      if (restored.KATEGORI) localStorage.setItem('mock_KATEGORI', JSON.stringify(restored.KATEGORI));
+      if (restored.RIWAYAT_BACA) localStorage.setItem('mock_RIWAYAT_BACA', JSON.stringify(restored.RIWAYAT_BACA));
+      return { success: true, message: "Database offline berhasil dipulihkan!" };
+    }
+  }
+}
+</script>

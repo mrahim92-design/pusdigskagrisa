@@ -1,0 +1,351 @@
+<style>
+/* 
+ * Pustaka Digital Premium - Modern CSS Stylesheet
+ * Custom Styling, Glassmorphism, Print Layouts & Visual Effects
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary-base: 220, 95%, 50%; /* #005cfc */
+  --primary-glow: 224, 100%, 75%;
+  --bg-gradient-start: #f8fafc;
+  --bg-gradient-end: #e2e8f0;
+  
+  --glass-bg: rgba(255, 255, 255, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+  
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --font-heading: 'Poppins', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+[data-theme="dark"] {
+  --bg-gradient-start: #0f172a;
+  --bg-gradient-end: #020617;
+  
+  --glass-bg: rgba(15, 23, 42, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+/* Global Aesthetics */
+body {
+  font-family: var(--font-body);
+  color: var(--text-main);
+  background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+  min-height: 100vh;
+  margin: 0;
+  transition: background 0.4s ease, color 0.4s ease;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+/* Premium Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Custom Interactive Widgets */
+.nav-link-custom {
+  position: relative;
+  transition: all 0.2s ease;
+}
+.nav-link-custom::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  transition: all 0.25s ease;
+  transform: translateX(-50%);
+}
+.nav-link-custom:hover::after,
+.nav-link-custom.active::after {
+  width: 80%;
+}
+
+/* Sidebar Custom Details */
+.sidebar-premium {
+  width: 280px;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 991px) {
+  .sidebar-premium {
+    transform: translateX(-100%);
+  }
+  .sidebar-premium.show {
+    transform: translateX(0);
+  }
+}
+
+.content-wrapper {
+  margin-left: 280px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 991px) {
+  .content-wrapper {
+    margin-left: 0;
+  }
+}
+
+/* Micro-Animations & Glows */
+.premium-glow-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.35);
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.premium-glow-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.5);
+}
+.premium-glow-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -75%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.3) 100%);
+  transform: skewX(-25deg);
+  transition: 0.75s;
+}
+.premium-glow-button:hover::before {
+  left: 125%;
+}
+
+/* Loading animations */
+.glow-loader {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(59, 130, 246, 0.1);
+  border-left-color: #3b82f6;
+  border-right-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+/* Toast System styling */
+.toast-premium {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  transform: translateY(150%);
+  transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.toast-premium.show {
+  transform: translateY(0);
+}
+
+/* Interactive Card Stack layout */
+.book-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+.book-card .cover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.85) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16px;
+}
+.book-card:hover .cover-overlay {
+  opacity: 1;
+}
+
+/* ID CARD / KARTU ANGGOTA PRINT STYLING */
+#printable-card-area {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-card-area, #printable-card-area * {
+    visibility: visible;
+  }
+  #printable-card-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 85.6mm;
+    height: 53.98mm;
+    display: block !important;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0;
+    padding: 0;
+    page-break-after: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+.member-id-card {
+  width: 350px;
+  height: 220px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #0d1b3e 100%);
+  color: white;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(13, 27, 62, 0.35);
+  font-family: 'Poppins', sans-serif;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.member-id-card::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0) 70%);
+  border-radius: 50%;
+}
+
+.id-card-logo {
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  background: linear-gradient(to right, #60a5fa, #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Custom PDF Reader overrides */
+.pdf-viewer-canvas-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: auto;
+  background: #27272a;
+  border-radius: 0.75rem;
+  padding: 16px;
+  min-height: 500px;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.pdf-dark-mode canvas {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+
+/* PWA Splash Install Banner */
+.pwa-banner {
+  background: linear-gradient(90deg, #1e40af, #3b82f6);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  border-radius: 0.5rem;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+}
+
+/* Floating Form Labels */
+.form-floating-custom {
+  position: relative;
+}
+.form-floating-custom input,
+.form-floating-custom select,
+.form-floating-custom textarea {
+  padding-top: 1.625rem;
+  padding-bottom: 0.625rem;
+}
+.form-floating-custom label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  padding: 1rem 0.75rem;
+  pointer-events: none;
+  border: 1px solid transparent;
+  transform-origin: 0 0;
+  transition: opacity .1s ease-in-out,transform .1s ease-in-out;
+  color: var(--text-muted);
+}
+.form-floating-custom input:focus ~ label,
+.form-floating-custom input:not(:placeholder-shown) ~ label,
+.form-floating-custom select:focus ~ label,
+.form-floating-custom select:not([value=""]) ~ label {
+  transform: scale(.85) translateY(-0.5rem) translateX(0.15rem);
+  opacity: .65;
+}
+</style>

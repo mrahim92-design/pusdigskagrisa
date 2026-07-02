@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Pustaka Digital Premium</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          backdropBlur: {
+            xs: '2px',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <!-- JavaScript CDN dependencies -->
+  <!-- ChartJS for statistics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- QRCode.js for Digital ID -->
+  <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+  <!-- JsBarcode for ID Barcode -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <!-- SheetJS for Export to Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- PDF.js for Reader -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+  </script>
+
+  <!-- Premium CSS styles -->
+  <?!= include('Style'); ?>
+</head>
+<body class="transition-all duration-300">
+
+  <!-- ==================== MAIN LOADER ==================== -->
+  <div id="global-loader" class="fixed inset-0 z-[9999] bg-slate-900 flex flex-col items-center justify-center gap-4 text-white">
+    <div class="glow-loader"></div>
+    <p class="text-sm font-extrabold tracking-widest text-slate-400 uppercase animate-pulse">Menghubungkan Pustaka...</p>
+  </div>
+
+  <!-- ==================== TOAST NOTIFICATION ==================== -->
+  <div id="toast-notify" class="toast-premium">
+    <div class="w-8 h-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center text-sm" id="toast-icon">
+      <i class="fas fa-info-circle"></i>
+    </div>
+    <div>
+      <h5 class="text-xs font-bold text-slate-400" id="toast-title">Pemberitahuan</h5>
+      <p class="text-sm font-semibold text-slate-800 dark:text-white" id="toast-message">Operasi berhasil dilaksanakan.</p>
+    </div>
+  </div>
+
+  <!-- ==================== AUTH CONTAINER (LOGOUT STATE) ==================== -->
+  <div id="auth-viewport" class="hidden">
+    <?!= include('Login'); ?>
+  </div>
+
+  <!-- ==================== MAIN APP LAYOUT (LOGIN STATE) ==================== -->
+  <div id="app-viewport" class="hidden min-h-screen flex relative">
+
+    <!-- SIDEBAR PREMIUM -->
+    <aside id="app-sidebar" class="sidebar-premium glass-panel m-4 h-[calc(100vh-2rem)] flex flex-col justify-between p-6">
+      
+      <!-- Top Section -->
+      <div class="space-y-8">
+        <!-- Logo -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center text-lg shadow-lg shadow-blue-500/35">
+            <i class="fas fa-book-reader" id="sidebar-app-logo"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-extrabold text-slate-800 dark:text-white leading-tight" id="sidebar-lib-name">Pustaka Digital</h2>
+            <span class="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">PREMIUM v1.0</span>
+          </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <nav class="space-y-2">
+          <button onclick="navigateTo('dashboard')" id="nav-dashboard" class="nav-link-custom w-full flex items-center gap-4 py-3 px-4 rounded-xl font-bold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-all text-sm">
+            <i class="fas fa-chart-pie w-5"></i>
+            <span>Dashboard</span>
+          </button>
+          
+          <button onclick="navigateTo('buku')" id="nav-buku" class="nav-link-custom w-full flex items-center gap-4 py-3 px-4 rounded-xl font-bold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-all text-sm">
+            <i class="fas fa-book w-5"></i>
+            <span>Katalog Buku</span>
+          </button>
+          
+          <button onclick="navigateTo('kategori')" id="nav-kategori" class="nav-link-custom w-full flex items-center gap-4 py-3 px-4 rounded-xl font-bold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-all text-sm">
+            <i class="fas fa-tags w-5"></i>
+            <span>Kategori</span>
+          </button>
+          
+          <button onclick="navigateTo('anggota')" id="nav-anggota" class="nav-link-custom w-full flex items-center gap-4 py-3 px-4 rounded-xl font-bold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-all text-sm admin-only">
+            <i class="fas fa-users w-5"></i>
+            <span>Anggota</span>
+          </button>
+
+          <button onclick="navigateTo('riwayat')" id="nav-riwayat" class="nav-link-custom w-full flex items-center gap-4 py-3 px-4 rounded-xl font-bold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-all text-sm">
+            <i class="fas fa-history w-5"></i>
+            <span>Riwayat Baca</span>
+          </button>
+
+          <button onclick="navigateTo('settings')" id="nav-settings" class="nav-link-custom w-full flex items-center gap-4 py-3 px-4 rounded-xl font-bold text-slate-600 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-all text-sm admin-only">
+            <i class="fas fa-sliders w-5"></i>
+            <span>Pengaturan</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Bottom Profile Panel -->
+      <div class="border-t border-slate-200/50 dark:border-slate-800/50 pt-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2 cursor-pointer" onclick="openProfileModal()">
+          <img id="sidebar-user-avatar" class="w-10 h-10 rounded-full object-cover border border-slate-300 dark:border-slate-700 bg-slate-200" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100" />
+          <div class="truncate max-w-[120px]">
+            <h5 id="sidebar-user-name" class="text-sm font-extrabold text-slate-800 dark:text-white leading-tight">Nama User</h5>
+            <span id="sidebar-user-role" class="text-[10px] text-slate-400 dark:text-slate-500 font-bold block mt-0.5">Pembaca</span>
+          </div>
+        </div>
+        <button onclick="handleLogout()" title="Keluar Akun" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/20 text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 flex items-center justify-center transition-all">
+          <i class="fas fa-power-off"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- CONTENT WRAPPER -->
+    <div class="content-wrapper flex-1 min-h-screen flex flex-col p-4 md:p-6 pl-4 md:pl-6 lg:pl-4">
+      
+      <!-- Top Application Header Bar -->
+      <header class="flex items-center justify-between mb-6 glass-panel px-6 py-4">
+        <!-- Breadcrumb / Mobile menu toggler -->
+        <div class="flex items-center gap-4">
+          <button onclick="toggleMobileSidebar()" class="lg:hidden w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all">
+            <i class="fas fa-bars"></i>
+          </button>
+          <div class="text-sm font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <span>Pustaka</span>
+            <i class="fas fa-chevron-right text-[10px] text-slate-400"></i>
+            <span id="header-breadcrumb" class="text-blue-600 dark:text-blue-400">Dashboard</span>
+          </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="flex items-center gap-4">
+          <!-- Light/Dark Mode -->
+          <button onclick="toggleDarkMode()" class="w-10 h-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-all" title="Ubah Tema">
+            <i class="fas fa-sun block dark:hidden"></i>
+            <i class="fas fa-moon hidden dark:block"></i>
+          </button>
+          
+          <!-- Quick Print ID Card (Pembaca can access directly here!) -->
+          <button onclick="printMyCard()" class="px-3 py-2 rounded-xl border border-blue-500/30 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/20 text-xs font-bold flex items-center gap-1.5 transition-all" title="Tampilkan Kartu Saya">
+            <i class="fas fa-id-card"></i>
+            <span class="hidden sm:inline">Kartu Saya</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- MAIN APP VIEWPORTS CONTAINER -->
+      <main class="flex-1">
+
+        <!-- VIEW 1: DASHBOARD VIEW (STATS & METRICS) -->
+        <section id="view-dashboard" class="view-panel space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-3xl font-extrabold text-slate-800 dark:text-white" id="dashboard-welcome-title">Selamat Datang!</h1>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Berikut adalah ringkasan aktivitas membaca perpustakaan digital hari ini.
+              </p>
+            </div>
+            
+            <!-- Quick Date Badge -->
+            <div class="px-4 py-2 bg-white/50 dark:bg-slate-900/50 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 border border-slate-200/50 dark:border-slate-800/50 flex items-center gap-2 self-start md:self-auto">
+              <i class="fas fa-calendar-alt text-blue-500"></i>
+              <span id="dashboard-current-date">Selasa, 26 Mei 2026</span>
+            </div>
+          </div>
+
+          <!-- Quick Metrics Cards -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Card 1: Books -->
+            <div class="glass-panel p-6 flex items-center justify-between relative overflow-hidden group">
+              <div class="space-y-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Koleksi</span>
+                <h3 id="stat-total-buku" class="text-3xl font-black text-slate-800 dark:text-white">0</h3>
+                <p class="text-[10px] text-slate-400 font-semibold mt-1">Buku terdaftar</p>
+              </div>
+              <div class="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-xl group-hover:scale-110 transition-all duration-300">
+                <i class="fas fa-book-open"></i>
+              </div>
+            </div>
+
+            <!-- Card 2: Members -->
+            <div class="glass-panel p-6 flex items-center justify-between relative overflow-hidden group">
+              <div class="space-y-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Anggota</span>
+                <h3 id="stat-total-anggota" class="text-3xl font-black text-slate-800 dark:text-white">0</h3>
+                <p class="text-[10px] text-slate-400 font-semibold mt-1">Akun aktif</p>
+              </div>
+              <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-xl group-hover:scale-110 transition-all duration-300">
+                <i class="fas fa-users"></i>
+              </div>
+            </div>
+
+            <!-- Card 3: Reads -->
+            <div class="glass-panel p-6 flex items-center justify-between relative overflow-hidden group">
+              <div class="space-y-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Dibaca</span>
+                <h3 id="stat-total-dibaca" class="text-3xl font-black text-slate-800 dark:text-white">0</h3>
+                <p class="text-[10px] text-slate-400 font-semibold mt-1">Kali dibaca online</p>
+              </div>
+              <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center text-xl group-hover:scale-110 transition-all duration-300">
+                <i class="fas fa-eye"></i>
+              </div>
+            </div>
+
+            <!-- Card 4: Most Popular Book -->
+            <div class="glass-panel p-6 flex items-center justify-between relative overflow-hidden group">
+              <div class="space-y-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Paling Populer</span>
+                <h3 id="stat-populer-judul" class="text-sm font-extrabold text-slate-800 dark:text-white truncate max-w-[140px] mt-2">Buku Panduan</h3>
+                <p id="stat-populer-dibaca" class="text-[10px] text-blue-500 font-extrabold block mt-0.5">0 kali dibaca</p>
+              </div>
+              <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xl group-hover:scale-110 transition-all duration-300">
+                <i class="fas fa-crown"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Layout: Graphs and Activities -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left: Graphical Analysis -->
+            <div class="lg:col-span-2 glass-panel p-6 space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="text-base font-bold text-slate-800 dark:text-white"><i class="fas fa-chart-line text-blue-500 mr-2"></i>Statistik Pembaca Bulanan</h4>
+                <div class="text-xs font-semibold text-slate-400">Analisis Realtime</div>
+              </div>
+              <div class="h-64 relative">
+                <canvas id="library-statistics-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- Right: Recent Activity Log list -->
+            <div class="glass-panel p-6 flex flex-col justify-between space-y-4">
+              <div>
+                <h4 class="text-base font-bold text-slate-800 dark:text-white mb-4"><i class="fas fa-history text-rose-500 mr-2"></i>Aktivitas Terbaru</h4>
+                <div id="recent-activities-list" class="space-y-4 max-h-56 overflow-y-auto pr-1">
+                  <!-- Dynamic items -->
+                  <div class="text-center py-10 text-slate-400 text-xs">Belum ada aktivitas membaca</div>
+                </div>
+              </div>
+              
+              <!-- Quick Navigation link -->
+              <button onclick="navigateTo('riwayat')" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-all">
+                <span>Lihat Seluruh Riwayat</span>
+                <i class="fas fa-chevron-right text-[10px]"></i>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 2: BUKU (CRUD + SEARCH) -->
+        <section id="view-buku" class="view-panel space-y-6 hidden">
+          <?!= include('Buku'); ?>
+        </section>
+
+        <!-- VIEW 3: KATEGORI (CRUD) -->
+        <section id="view-kategori" class="view-panel space-y-6 hidden">
+          <?!= include('Kategori'); ?>
+        </section>
+
+        <!-- VIEW 4: ANGGOTA (CRUD + ID CARD) -->
+        <section id="view-anggota" class="view-panel space-y-6 hidden">
+          <?!= include('Anggota'); ?>
+        </section>
+
+        <!-- VIEW 5: READER (PDF VIEWER CANVAS) -->
+        <section id="view-reader" class="view-panel space-y-6 hidden">
+          <?!= include('Reader'); ?>
+        </section>
+
+        <!-- VIEW 6: RIWAYAT BACA (LOG DATABASE) -->
+        <section id="view-riwayat" class="view-panel space-y-6 hidden">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-3xl font-extrabold text-slate-800 dark:text-white">Log Aktivitas Membaca</h1>
+              <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Lacak jejak literasi seluruh anggota dalam membaca koleksi dokumen PDF.
+              </p>
+            </div>
+            
+            <!-- Export Excel / PDF Actions -->
+            <div class="flex items-center gap-2 self-start md:self-auto">
+              <button onclick="exportHistoryExcel()" class="py-2 px-4 rounded-xl border border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/20 text-xs font-bold flex items-center gap-1.5 transition-all">
+                <i class="fas fa-file-excel"></i>
+                <span>Ekspor Excel</span>
+              </button>
+              <button onclick="window.print()" class="py-2 px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-xs font-bold flex items-center gap-1.5 transition-all">
+                <i class="fas fa-print"></i>
+                <span>Cetak PDF</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- History Table -->
+          <div class="glass-panel overflow-hidden border border-slate-200/50 dark:border-slate-800/50">
+            <div class="overflow-x-auto">
+              <table class="w-full border-collapse text-left">
+                <thead>
+                  <tr class="bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 text-xs uppercase font-extrabold tracking-wider border-b border-slate-200/50 dark:border-slate-800/50">
+                    <th class="py-4 px-6">ID Riwayat</th>
+                    <th class="py-4 px-6">User Pembaca</th>
+                    <th class="py-4 px-6">Buku Yang Dibaca</th>
+                    <th class="py-4 px-6">Waktu Membaca</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table-body" class="divide-y divide-slate-200/30 dark:divide-slate-800/30 text-sm text-slate-700 dark:text-slate-300">
+                  <tr>
+                    <td colspan="4" class="py-20 text-center text-slate-400">
+                      <div class="glow-loader mx-auto mb-4"></div>
+                      <p class="font-semibold">Memuat log aktivitas...</p>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 7: APP SETTINGS (ADMIN SUPER CONTROL) -->
+        <section id="view-settings" class="view-panel space-y-6 hidden">
+          <div class="flex flex-col justify-start">
+            <h1 class="text-3xl font-extrabold text-slate-800 dark:text-white">Pengaturan Aplikasi</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Konfigurasi tema, backup & restore database utama, dan personalisasi Pustaka Digital Premium.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left: Application Brand Settings -->
+            <div class="lg:col-span-2 glass-panel p-6 space-y-6">
+              <h3 class="text-lg font-bold text-slate-800 dark:text-white"><i class="fas fa-sliders text-blue-500 mr-2"></i>Personalisasi & Branding</h3>
+              
+              <form id="form-settings" onsubmit="handleSettingsSubmit(event)" class="space-y-4">
+                <div class="form-floating-custom">
+                  <input id="set-lib-name" type="text" placeholder="Nama Perpustakaan" required
+                    class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                  <label for="set-lib-name"><i class="fas fa-hotel mr-2"></i>Nama Perpustakaan</label>
+                </div>
+
+                <div class="form-floating-custom">
+                  <input id="set-logo-url" type="text" placeholder="Logo URL (Icon/Branding)"
+                    class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                  <label for="set-logo-url"><i class="fas fa-link mr-2"></i>Logo URL (Link Gambar)</label>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-500 px-1">Aksen Warna Tema Utama</label>
+                    <select id="set-theme-color" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="blue">Biru Premium (Default)</option>
+                      <option value="emerald">Hijau Emerald</option>
+                      <option value="rose">Pink Rose</option>
+                      <option value="purple">Ungu Violet</option>
+                    </select>
+                  </div>
+
+                  <div class="space-y-1">
+                    <label class="text-xs font-semibold text-slate-500 px-1">Perizinan Unduhan PDF</label>
+                    <select id="set-allow-download" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                      <option value="true">Diizinkan (Tampilkan Tombol Download)</option>
+                      <option value="false">Dilarang (Hanya Boleh Baca Online)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="submit" class="premium-glow-button px-6 py-3 rounded-xl font-bold flex items-center gap-2 text-sm">
+                  <i class="fas fa-check-circle"></i>
+                  <span>Simpan Pengaturan</span>
+                </button>
+              </form>
+            </div>
+
+            <!-- Right: Backup, Restore & Super Tools -->
+            <div class="glass-panel p-6 space-y-6">
+              <h3 class="text-lg font-bold text-slate-800 dark:text-white"><i class="fas fa-hdd text-emerald-500 mr-2"></i>Keamanan Database</h3>
+              
+              <div class="space-y-4">
+                <!-- Backup -->
+                <div class="p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50 space-y-2">
+                  <h4 class="text-sm font-bold text-slate-700 dark:text-slate-300">Buat Cadangan (Backup)</h4>
+                  <p class="text-xs text-slate-400">Menyimpan snapshot data spreadsheet USERS, BUKU, KATEGORI, RIWAYAT ke format JSON.</p>
+                  <div class="flex items-center gap-2 pt-2">
+                    <button onclick="triggerAppBackup()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5">
+                      <i class="fas fa-cloud-download-alt"></i>
+                      <span>Backup Sekarang</span>
+                    </button>
+                    <a id="btn-local-download-backup" style="display:none;" class="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center"><i class="fas fa-file-download"></i></a>
+                  </div>
+                </div>
+
+                <!-- Restore -->
+                <div class="p-4 rounded-xl border border-slate-200/50 dark:border-slate-800/50 space-y-2">
+                  <h4 class="text-sm font-bold text-slate-700 dark:text-slate-300">Kembalikan Data (Restore)</h4>
+                  <p class="text-xs text-slate-400">Unggah file JSON backup Pustaka Digital Premium untuk memulihkan seluruh sheet data database.</p>
+                  <label class="w-full py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer mt-2">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <span>Pilih & Restore</span>
+                    <input type="file" id="restore-db-file" accept=".json" class="hidden" onchange="triggerAppRestore(this)" />
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- PWA SPLASH INSTALL BANNER BANNER -->
+      <div id="pwa-install-banner" class="pwa-banner hidden mt-6">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-sm">
+            <i class="fas fa-mobile-alt"></i>
+          </div>
+          <div>
+            <h5 class="text-xs font-bold leading-tight">Install Pustaka Digital Premium</h5>
+            <p class="text-[10px] opacity-80 mt-0.5">Nikmati akses PWA cepat, realtime, dan hemat data langsung dari HP / Desktop.</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="dismissPwaBanner()" class="px-3 py-1.5 border border-white/20 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all">Nanti</button>
+          <button onclick="installPwaApp()" class="px-3 py-1.5 bg-white text-blue-700 rounded-lg text-xs font-extrabold shadow hover:bg-slate-100 transition-all">Pasang</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PROFILE MODAL FOR LOGGED IN USERS -->
+  <div id="profile-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="glass-panel w-full max-w-md overflow-hidden relative animate-fadeIn scale-95 transition-all" id="profile-modal-card">
+      <div class="p-6 border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between">
+        <h3 class="text-xl font-bold text-slate-800 dark:text-white">Edit Profil Saya</h3>
+        <button onclick="closeProfileModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-all">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form id="form-profile" onsubmit="handleProfileSubmit(event)" class="p-6 space-y-4">
+        <!-- Avatar preview/edit -->
+        <div class="flex flex-col items-center gap-3">
+          <div class="relative group cursor-pointer" onclick="document.getElementById('prof-foto-file').click()">
+            <img id="prof-avatar-preview" class="w-20 h-20 rounded-full object-cover border-2 border-blue-500 shadow bg-slate-200" src="" />
+            <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-all">
+              <i class="fas fa-camera"></i>
+            </div>
+            <input type="file" id="prof-foto-file" accept="image/*" class="hidden" onchange="previewProfileFoto(this)" />
+          </div>
+          <span class="text-xs text-slate-400">Klik gambar avatar untuk mengubah foto profil</span>
+        </div>
+
+        <!-- Inputs -->
+        <div class="form-floating-custom">
+          <input id="prof-nama-input" type="text" placeholder="Nama Lengkap" required
+            class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+          <label for="prof-nama-input"><i class="fas fa-id-badge mr-2"></i>Nama Lengkap</label>
+        </div>
+
+        <div class="form-floating-custom">
+          <input id="prof-kelas-input" type="text" placeholder="Kelas / Jabatan" required
+            class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+          <label for="prof-kelas-input"><i class="fas fa-graduation-cap mr-2"></i>Kelas</label>
+        </div>
+
+        <div class="form-floating-custom">
+          <input id="prof-password-input" type="password" placeholder="Password Baru (Kosongkan jika tidak diubah)"
+            class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+          <label for="prof-password-input"><i class="fas fa-key mr-2"></i>Ganti Password (Opsional)</label>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-3 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
+          <button type="button" onclick="closeProfileModal()" class="flex-1 py-3 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-sm">
+            Batal
+          </button>
+          <button type="submit" class="flex-1 py-3 text-white font-semibold rounded-xl premium-glow-button text-sm flex items-center justify-center gap-2">
+            <span>Simpan Perubahan</span>
+            <i class="fas fa-save"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main JavaScript JS Core Router and sync operations -->
+  <?!= include('Script'); ?>
+</body>
+</html>

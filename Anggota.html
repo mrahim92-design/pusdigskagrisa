@@ -1,0 +1,237 @@
+<!-- 
+  Pustaka Digital Premium - Anggota Panel (Anggota.html)
+  Manage members, add/edit accounts, and print beautiful digital ID Cards
+-->
+
+<div class="space-y-6">
+  <!-- Header Bar -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-extrabold text-slate-800 dark:text-white">Database Anggota</h1>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
+        Kelola keanggotaan pembaca, reset password, dan buat kartu digital secara instan.
+      </p>
+    </div>
+    
+    <!-- Admin-only Add Member -->
+    <button onclick="openMemberModal()" class="premium-glow-button px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 text-sm self-start md:self-auto admin-only">
+      <i class="fas fa-user-plus"></i>
+      <span>Tambah Anggota</span>
+    </button>
+  </div>
+
+  <!-- Search and Quick Statistics Bar -->
+  <div class="glass-panel p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+    <!-- Real-time search by ID, name or class -->
+    <div class="relative w-full md:max-w-md">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+        <i class="fas fa-search"></i>
+      </span>
+      <input type="text" id="search-member-input" onkeyup="filterMembersTable()" placeholder="Cari nama, kelas, ID..." 
+        class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all" />
+    </div>
+
+    <div class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+      Menampilkan <span id="member-count-label" class="font-extrabold text-blue-600 dark:text-blue-400">0</span> anggota terdaftar
+    </div>
+  </div>
+
+  <!-- Members Grid / Responsive Table -->
+  <div class="glass-panel overflow-hidden border border-slate-200/50 dark:border-slate-800/50">
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-left">
+        <thead>
+          <tr class="bg-slate-100/70 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 text-xs uppercase font-extrabold tracking-wider border-b border-slate-200/50 dark:border-slate-800/50">
+            <th class="py-4 px-6">Anggota</th>
+            <th class="py-4 px-6">ID & Username</th>
+            <th class="py-4 px-6">Role & Kelas</th>
+            <th class="py-4 px-6">Status</th>
+            <th class="py-4 px-6 text-center">Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="members-table-body" class="divide-y divide-slate-200/30 dark:divide-slate-800/30 text-sm text-slate-700 dark:text-slate-300">
+          <tr>
+            <td colspan="5" class="py-20 text-center text-slate-400">
+              <div class="glow-loader mx-auto mb-4"></div>
+              <p class="font-semibold">Memuat database anggota...</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MEMBER ADD/EDIT MODAL -->
+<div id="member-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+  <div class="glass-panel w-full max-w-md overflow-hidden relative animate-fadeIn scale-95 transition-all" id="member-modal-card">
+    <div class="p-6 border-b border-slate-200/50 dark:border-slate-800/50 flex items-center justify-between">
+      <h3 id="member-modal-title" class="text-xl font-bold text-slate-800 dark:text-white">Tambah Anggota Baru</h3>
+      <button onclick="closeMemberModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-all">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <form id="form-member" onsubmit="handleMemberSubmit(event)" class="p-6 space-y-4">
+      <input type="hidden" id="member-id-field" />
+
+      <!-- Full Name -->
+      <div class="form-floating-custom">
+        <input id="mem-nama-input" type="text" placeholder="Nama Lengkap" required
+          class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+        <label for="mem-nama-input"><i class="fas fa-user-circle mr-2"></i>Nama Lengkap</label>
+      </div>
+
+      <!-- Username & Password -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="form-floating-custom">
+          <input id="mem-username-input" type="text" placeholder="Username" required
+            class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+          <label for="mem-username-input"><i class="fas fa-user mr-2"></i>Username</label>
+        </div>
+        <div class="form-floating-custom" id="mem-pass-container">
+          <input id="mem-password-input" type="password" placeholder="Password" required
+            class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+          <label for="mem-password-input"><i class="fas fa-lock mr-2"></i>Password</label>
+        </div>
+      </div>
+
+      <!-- Role & Class -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="space-y-1">
+          <label class="text-xs font-semibold text-slate-500 px-1">Role Akun</label>
+          <select id="mem-role-input" required
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+            <option value="Pembaca">Pembaca / Anggota</option>
+            <option value="Admin">Administrator</option>
+          </select>
+        </div>
+        <div class="form-floating-custom mt-5">
+          <input id="mem-kelas-input" type="text" placeholder="Kelas / Jabatan" required
+            class="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+          <label for="mem-kelas-input"><i class="fas fa-graduation-cap mr-2"></i>Kelas</label>
+        </div>
+      </div>
+
+      <!-- Status Selection -->
+      <div class="space-y-1">
+        <label class="text-xs font-semibold text-slate-500 px-1">Status Keaktifan</label>
+        <select id="mem-status-input" required
+          class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 text-slate-800 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+          <option value="Aktif">Aktif</option>
+          <option value="Nonaktif">Nonaktif</option>
+        </select>
+      </div>
+
+      <!-- Member Photo -->
+      <div class="space-y-1">
+        <label class="text-xs font-semibold text-slate-500 px-1">Foto Anggota (PNG/JPG)</label>
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-2 px-4 py-2 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-xs text-slate-600 dark:text-slate-400">
+            <i class="fas fa-camera"></i>
+            <span>Pilih Foto</span>
+            <input type="file" id="mem-foto-file" accept="image/*" class="hidden" onchange="previewMemFotoUpload(this)" />
+          </label>
+          <div id="mem-foto-preview-container" class="hidden">
+            <img id="mem-foto-preview" class="w-10 h-10 rounded-full object-cover border border-blue-500" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-3 pt-3 border-t border-slate-200/50 dark:border-slate-800/50">
+        <button type="button" onclick="closeMemberModal()" class="flex-1 py-3 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-semibold rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all text-sm">
+          Batal
+        </button>
+        <button type="submit" class="flex-1 py-3 text-white font-semibold rounded-xl premium-glow-button text-sm flex items-center justify-center gap-2">
+          <span>Simpan</span>
+          <i class="fas fa-save"></i>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- DIGITAL ID CARD MODAL -->
+<div id="idcard-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+  <div class="glass-panel w-full max-w-lg overflow-hidden relative animate-fadeIn scale-95 transition-all p-6 flex flex-col items-center gap-6" id="idcard-modal-card">
+    
+    <div class="w-full flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 pb-4">
+      <h3 class="text-xl font-bold text-slate-800 dark:text-white">Kartu Anggota Digital</h3>
+      <button onclick="closeIdCardModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white flex items-center justify-center transition-all">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- The beautiful credit-card ID card HTML representation -->
+    <div id="digital-id-card" class="member-id-card p-4 flex flex-col justify-between relative shadow-2xl">
+      <!-- Upper: Logo and Org name -->
+      <div class="flex items-center justify-between border-b border-white/10 pb-2">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-book-reader text-blue-400"></i>
+          <span class="id-card-logo font-bold text-xs uppercase" id="card-lib-title">Pustaka Premium</span>
+        </div>
+        <span class="text-[8px] tracking-wider text-slate-400 uppercase font-semibold">KARTU ANGGOTA DIGITAL</span>
+      </div>
+
+      <!-- Middle: Avatar & basic stats -->
+      <div class="flex items-center gap-4 my-2">
+        <!-- Photo -->
+        <img id="card-user-foto" class="w-16 h-16 rounded-full object-cover border-2 border-blue-400 shadow-md bg-slate-800" src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100" />
+        
+        <!-- Info fields -->
+        <div class="flex-1 space-y-1 text-white">
+          <h4 id="card-user-nama" class="font-extrabold text-sm truncate max-w-[150px]">Nama Lengkap</h4>
+          
+          <div class="grid grid-cols-2 gap-x-2 text-[9px] text-slate-300">
+            <div>
+              <span class="text-[7px] text-slate-400 block font-semibold">ID ANGGOTA</span>
+              <span id="card-user-id" class="font-bold">USR-000</span>
+            </div>
+            <div>
+              <span class="text-[7px] text-slate-400 block font-semibold">KELAS / STAF</span>
+              <span id="card-user-kelas" class="font-bold">XII-IPA</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- QR Code container rendered in canvas -->
+        <div class="bg-white p-1 rounded-md shadow-md flex items-center justify-center">
+          <div id="card-qrcode" class="w-12 h-12 flex items-center justify-center"></div>
+        </div>
+      </div>
+
+      <!-- Lower: Barcode and barcode text -->
+      <div class="flex items-center justify-between mt-1 pt-1 border-t border-white/10">
+        <div class="flex flex-col">
+          <!-- Barcode svg target -->
+          <svg id="card-barcode" class="h-6 w-32 bg-transparent text-white fill-current"></svg>
+        </div>
+        <div class="text-right text-[8px] text-slate-400">
+          <span>Berlaku Selama Aktif</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="w-full grid grid-cols-3 gap-3">
+      <button onclick="downloadIdCardPng()" class="py-2.5 px-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all">
+        <i class="fas fa-download"></i>
+        <span>Download PNG</span>
+      </button>
+      <button onclick="printIdCard()" class="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all">
+        <i class="fas fa-print"></i>
+        <span>Cetak PDF</span>
+      </button>
+      <button onclick="window.print()" class="py-2.5 px-3 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all">
+        <i class="fas fa-desktop"></i>
+        <span>Print Layar</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Print target zone hidden offscreen for high-fidelity ID card layout -->
+<div id="printable-card-area">
+  <!-- Dynamic clone will inject here when print requested -->
+</div>

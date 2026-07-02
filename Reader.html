@@ -1,0 +1,82 @@
+<!-- 
+  Pustaka Digital Premium - PDF Reader Component (Reader.html)
+  High-Performance Viewer with Dark Mode, Zoom & Autosave Bookmarking
+-->
+
+<div class="space-y-4">
+  <!-- Reader Control Bar -->
+  <div class="glass-panel p-4 flex flex-wrap items-center justify-between gap-4">
+    <!-- Back & Title -->
+    <div class="flex items-center gap-3">
+      <button onclick="closeReader()" class="w-10 h-10 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+      <div>
+        <h2 id="reader-book-title" class="text-lg font-bold text-slate-800 dark:text-white truncate max-w-xs md:max-w-md">Pedoman Penggunaan Pustaka</h2>
+        <p id="reader-book-author" class="text-xs text-slate-400 dark:text-slate-500 font-semibold truncate">Oleh Tim Pengembang</p>
+      </div>
+    </div>
+
+    <!-- Navigation & Zoom Controls -->
+    <div class="flex items-center gap-4 flex-wrap">
+      <!-- Page Navigation -->
+      <div class="flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl gap-2 text-sm border border-slate-200/50 dark:border-slate-700/50">
+        <button onclick="pdfPrevPage()" class="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <span class="text-slate-600 dark:text-slate-300 font-semibold whitespace-nowrap">
+          Hlm <span id="pdf-current-page" class="font-extrabold text-blue-600 dark:text-blue-400">1</span> dari <span id="pdf-total-pages" class="font-bold">1</span>
+        </span>
+        <button onclick="pdfNextPage()" class="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+
+      <!-- Zoom and Display -->
+      <div class="flex items-center bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl gap-2 text-sm border border-slate-200/50 dark:border-slate-700/50">
+        <button onclick="pdfZoomOut()" title="Perkecil" class="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all">
+          <i class="fas fa-search-minus"></i>
+        </button>
+        <span id="pdf-zoom-level" class="text-xs text-slate-600 dark:text-slate-300 font-bold w-12 text-center">100%</span>
+        <button onclick="pdfZoomIn()" title="Perbesar" class="w-8 h-8 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all">
+          <i class="fas fa-search-plus"></i>
+        </button>
+      </div>
+
+      <!-- Reading Preferences & Fullscreen -->
+      <div class="flex items-center gap-2">
+        <!-- Bookmark Button -->
+        <button onclick="togglePdfBookmark()" id="btn-reader-bookmark" title="Simpan Halaman Bookmark" 
+          class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-400 hover:text-rose-500 flex items-center justify-center transition-all border border-slate-200/50 dark:border-slate-700/50">
+          <i class="fas fa-bookmark"></i>
+        </button>
+        
+        <!-- Reader Dark Mode Toggle -->
+        <button onclick="toggleReaderDarkMode()" id="btn-reader-dark" title="Toggling Dark Mode Reader"
+          class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all border border-slate-200/50 dark:border-slate-700/50">
+          <i class="fas fa-moon"></i>
+        </button>
+
+        <!-- Fullscreen Button -->
+        <button onclick="toggleReaderFullscreen()" title="Fullscreen"
+          class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all border border-slate-200/50 dark:border-slate-700/50">
+          <i class="fas fa-expand"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF Viewport Wrapper -->
+  <div id="reader-viewport-wrapper" class="relative">
+    <!-- Overlay Loading -->
+    <div id="pdf-loading-overlay" class="absolute inset-0 bg-slate-900/40 backdrop-blur-xs flex flex-col items-center justify-center z-10 rounded-xl">
+      <div class="glow-loader mb-3"></div>
+      <p class="text-sm font-bold text-white">Memuat dokumen PDF...</p>
+    </div>
+
+    <!-- Scrollable container for Canvas -->
+    <div id="pdf-canvas-container" class="pdf-viewer-canvas-container">
+      <canvas id="pdf-render-canvas" class="shadow-xl rounded-md transition-all duration-300"></canvas>
+    </div>
+  </div>
+</div>
