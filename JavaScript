@@ -1,0 +1,35 @@
+// Array untuk menyimpan data
+let koleksiBuku = JSON.parse(localStorage.getItem('buku_data')) || [];
+let daftarUser = JSON.parse(localStorage.getItem('user_data')) || [];
+
+function saveBuku() {
+    const judul = document.getElementById('in-judul').value;
+    const penulis = document.getElementById('in-penulis').value;
+    
+    if(judul && penulis) {
+        koleksiBuku.push({ judul, penulis });
+        localStorage.setItem('buku_data', JSON.stringify(koleksiBuku));
+        alert('Buku berhasil disimpan!');
+        // Reset input
+        document.getElementById('in-judul').value = '';
+        document.getElementById('in-penulis').value = '';
+    } else {
+        alert('Mohon isi semua kolom!');
+    }
+}
+
+function saveUser() {
+    const nama = document.getElementById('in-nama').value;
+    const kelas = document.getElementById('in-kelas').value;
+    
+    if(nama && kelas) {
+        daftarUser.push({ nama, kelas });
+        localStorage.setItem('user_data', JSON.stringify(daftarUser));
+        alert('User berhasil disimpan!');
+        // Reset input
+        document.getElementById('in-nama').value = '';
+        document.getElementById('in-kelas').value = '';
+    } else {
+        alert('Mohon isi semua kolom!');
+    }
+}
