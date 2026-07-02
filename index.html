@@ -3,105 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perpustakaan Digital SMK PGRI 1 Surabaya</title>
+    <title>Perpustakaan Digital SMK PGRI 1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- SheetJS untuk Upload Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script>
-        tailwind.config = { theme: { extend: { colors: { gojekGreen: '#00aa13', gojekDark: '#00880f', gojekText: '#1c1c1c', gojekBg: '#f5f5f5', gojekRed: '#ee2737', gojekBlue: '#00a5cf' } } } }
-    </script>
     <style>
-        @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 8.5cm; height: 5.4cm; border: 1px solid #ccc; }
-            .no-print { display: none !important; }
-        }
-        /* Ukuran Kartu KTP */
-        .ktp-size { width: 8.5cm; height: 5.4cm; }
+        @media print { .no-print { display: none !important; } }
+        .ktp-size { width: 85.6mm; height: 53.98mm; border: 1px solid #ccc; padding: 10px; font-size: 10px; background: white; }
     </style>
 </head>
-<body class="bg-gojekBg text-gojekText min-h-screen">
+<body class="bg-gray-50 pb-20">
 
-    <!-- NAVBAR (Tetap dengan struktur Anda) -->
-    <nav class="bg-white shadow-sm sticky top-0 z-50 p-4 flex justify-between items-center">
-        <span class="font-bold text-lg">Perpustakaan <span class="text-gojekGreen">PGRI 1</span></span>
-        <div class="hidden md:flex gap-4">
-            <button onclick="switchTab('dashboard')">Beranda</button>
-            <button onclick="switchTab('katalog')">Eksplor</button>
-            <button onclick="switchTab('kartu')">Kartu</button>
-            <button onclick="switchTab('admin')">Kelola</button>
-        </div>
+    <!-- Navbar -->
+    <nav class="bg-white p-4 shadow-sm flex justify-between items-center sticky top-0 z-50">
+        <h1 class="font-bold text-green-600">SMK PGRI 1 SURABAYA</h1>
+        <div id="user-info" class="text-xs text-gray-500">Silakan Login</div>
     </nav>
 
-    <main class="max-w-5xl mx-auto p-4">
+    <!-- Main Content -->
+    <main class="max-w-md mx-auto p-4">
         
-        <!-- DASHBOARD -->
-        <section id="tab-dashboard" class="tab-content">
-            <h2 class="font-bold text-xl mb-4">Buku Favorit (Slider)</h2>
-            <div id="slider" class="flex overflow-x-auto gap-4 pb-4 snap-x">
-                <!-- Data dummy slider -->
-                <div class="min-w-[200px] bg-white p-4 rounded-xl shadow">Buku Favorit 1</div>
-                <div class="min-w-[200px] bg-white p-4 rounded-xl shadow">Buku Favorit 2</div>
+        <!-- Tab: Beranda -->
+        <section id="tab-beranda" class="tab-content">
+            <h2 class="font-bold mb-2">Buku Favorit</h2>
+            <div class="flex gap-4 overflow-x-auto pb-4">
+                <div class="min-w-[120px] h-40 bg-gray-300 rounded-lg"></div>
+                <div class="min-w-[120px] h-40 bg-gray-300 rounded-lg"></div>
             </div>
-            
-            <h2 class="font-bold text-xl mt-8 mb-4">Buku Baru</h2>
-            <div id="new-books-grid" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <!-- 4 buku terbaru -->
-                <div class="bg-white p-4 rounded-xl shadow">Buku Baru 1</div>
-                <div class="bg-white p-4 rounded-xl shadow">Buku Baru 2</div>
-                <div class="bg-white p-4 rounded-xl shadow">Buku Baru 3</div>
-                <div class="bg-white p-4 rounded-xl shadow">Buku Baru 4</div>
-            </div>
+            <h2 class="font-bold mt-4">Buku Baru</h2>
+            <div id="list-buku" class="grid grid-cols-2 gap-4 mt-2"></div>
         </section>
 
-        <!-- EKSPLOR -->
-        <section id="tab-katalog" class="tab-content hidden">
-            <h2 class="font-bold text-xl mb-4">Eksplor Koleksi</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-white p-4 rounded-xl shadow">
-                    <h3 class="font-bold">Judul Buku</h3>
-                    <div class="mt-4 flex gap-2">
-                        <button class="bg-blue-500 text-white px-2 py-1 text-xs rounded">Baca</button>
-                        <button class="bg-green-500 text-white px-2 py-1 text-xs rounded">Pinjam</button>
-                        <button class="bg-gray-500 text-white px-2 py-1 text-xs rounded">Download</button>
-                    </div>
+        <!-- Tab: Kartu -->
+        <section id="tab-kartu" class="tab-content hidden">
+            <h2 class="font-bold mb-2">Kartu Anggota</h2>
+            <input type="file" id="upload-template" class="mb-2 text-xs">
+            <div id="kartu-digital" class="ktp-size mt-4 mx-auto">
+                <h3 class="font-bold text-[8px]">SMK PGRI 1 SURABAYA</h3>
+                <p class="text-[6px]">Jl. Jemursari VIII No 120 Surabaya</p>
+                <hr class="my-1">
+                <p>Nama: <span id="v-nama">-</span></p>
+                <p>Kelas: <span id="v-kelas">-</span></p>
+                <p>No WA: <span id="v-wa">-</span></p>
+                <p>Alamat: <span id="v-alamat">-</span></p>
+                <p class="mt-2 text-[6px]">Berlaku: 17 Juli 2026 s/d 17 Juni 2029</p>
+                <div class="mt-2 text-[6px] text-right">
+                    Surabaya, 17 Juli 2026<br>Kepala Sekolah<br><br><br>Kustiono, ST., M.M.
                 </div>
             </div>
+            <button onclick="window.print()" class="w-full bg-green-600 text-white mt-4 py-2 rounded">Cetak Kartu</button>
         </section>
 
-        <!-- KARTU -->
-        <section id="tab-kartu" class="tab-content hidden">
-            <h2 class="font-bold text-xl mb-4">Database Siswa</h2>
-            <input type="file" id="upload-excel" class="mb-4" accept=".xlsx, .xls">
-            <div class="bg-white p-4 rounded shadow mb-6 overflow-x-auto">
-                <table id="siswa-table" class="w-full text-sm">
-                    <thead><tr><th>Nama</th><th>Kelas</th></tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div id="print-area" class="ktp-size bg-white border p-2">
-                <h3 class="font-bold text-[10px]">KARTU PERPUSTAKAAN</h3>
-                <p id="card-nama" class="text-xs font-bold">-</p>
-                <p id="card-kelas" class="text-[10px]">-</p>
-            </div>
-        </section>
-
-        <!-- KELOLA (LOGIN) -->
+        <!-- Tab: Admin -->
         <section id="tab-admin" class="tab-content hidden">
-            <div id="login-form" class="max-w-sm mx-auto bg-white p-6 rounded shadow">
-                <h2 class="font-bold mb-4">Login Akses</h2>
-                <input type="text" id="user-in" placeholder="Username" class="w-full border p-2 mb-2">
-                <input type="password" id="pw-in" placeholder="Password" class="w-full border p-2 mb-2">
-                <button onclick="checkLogin()" class="w-full bg-gojekGreen text-white py-2">Login</button>
+            <div id="login-box">
+                <h2 class="font-bold">Login Admin/Guru</h2>
+                <input type="text" id="username" placeholder="Username" class="w-full p-2 border my-2">
+                <input type="password" id="password" placeholder="Password" class="w-full p-2 border mb-2">
+                <button onclick="login()" class="w-full bg-blue-600 text-white py-2">Masuk</button>
             </div>
-            <div id="admin-panel" class="hidden">
-                <h2 class="font-bold text-xl">Panel Admin/Guru</h2>
-                <!-- Form tambah user dll -->
+            <div id="admin-menu" class="hidden">
+                <h2 class="font-bold">Panel Admin</h2>
+                <button onclick="addBuku()" class="block w-full bg-green-500 text-white py-2 my-2">+ Tambah Buku</button>
+                <button onclick="addUser()" class="block w-full bg-blue-500 text-white py-2">+ Tambah User</button>
             </div>
         </section>
     </main>
+
+    <!-- Bottom Nav -->
+    <div class="fixed bottom-0 w-full bg-white border-t p-4 flex justify-around">
+        <button onclick="switchTab('beranda')"><i class="fas fa-home"></i></button>
+        <button onclick="switchTab('kartu')"><i class="fas fa-id-card"></i></button>
+        <button onclick="switchTab('admin')"><i class="fas fa-cog"></i></button>
+    </div>
 
     <script>
         function switchTab(id) {
@@ -109,32 +83,27 @@
             document.getElementById('tab-' + id).classList.remove('hidden');
         }
 
-        function checkLogin() {
-            const u = document.getElementById('user-in').value;
-            const p = document.getElementById('pw-in').value;
-            if ((u === 'Admin' && p === 'Admin123') || (p === 'skagrisa123')) {
-                document.getElementById('login-form').classList.add('hidden');
-                document.getElementById('admin-panel').classList.remove('hidden');
-                alert('Login Berhasil');
+        function login() {
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            if(u === 'Admin' && p === 'Admin123') {
+                document.getElementById('login-box').classList.add('hidden');
+                document.getElementById('admin-menu').classList.remove('hidden');
+                document.getElementById('user-info').innerText = 'Admin Aktif';
             } else {
-                alert('User/Password Salah');
+                alert('Login Gagal!');
             }
         }
 
-        // Logic Upload Excel
-        document.getElementById('upload-excel').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const sheetName = workbook.SheetNames[0];
-                const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                console.log(json); // Data excel siap diolah ke tabel
-                alert('Data berhasil diupload!');
-            };
-            reader.readAsArrayBuffer(file);
-        });
+        // Logic tambah data bisa dikembangkan ke localstorage/database
+        function addBuku() { alert('Fitur tambah buku aktif'); }
+        function addUser() { alert('Fitur tambah user aktif'); }
+
+        // Simulasi update kartu
+        document.getElementById('v-nama').innerText = "Budi Santoso";
+        document.getElementById('v-kelas').innerText = "XII RPL";
+        document.getElementById('v-wa').innerText = "08123456789";
+        document.getElementById('v-alamat').innerText = "Jl. Surabaya";
     </script>
 </body>
 </html>
