@@ -3,100 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Perpustakaan Digital</title>
+    <title>Perpustakaan Digital SMK PGRI 1 Surabaya</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gojekGreen: '#00aa13',
+                        gojekDark: '#00880f',
+                        gojekText: '#1c1c1c',
+                        gojekBg: '#f5f5f5',
+                        gojekRed: '#ee2737',
+                        gojekBlue: '#00a5cf'
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        .hidden { display: none; }
-        .card-size { width: 330px; height: 200px; }
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-gray-50 p-4">
+<body class="bg-gojekBg text-gojekText min-h-screen flex flex-col font-sans">
 
-    <!-- Login Form -->
-    <div id="login-screen" class="max-w-md mx-auto mt-20 p-6 bg-white rounded-xl shadow-lg">
-        <h2 class="text-xl font-bold mb-4">Login Petugas</h2>
-        <input type="text" id="username" placeholder="Username" class="w-full p-2 border mb-2">
-        <input type="password" id="password" placeholder="Password" class="w-full p-2 border mb-4">
-        <button onclick="login()" class="w-full bg-green-600 text-white p-2 rounded">Masuk</button>
-    </div>
-
-    <!-- Main Content -->
-    <div id="main-app" class="hidden max-w-4xl mx-auto">
-        <nav class="flex gap-4 mb-6">
-            <button onclick="showTab('dashboard')" class="px-4 py-2 bg-white rounded-lg shadow">Dashboard</button>
-            <button onclick="showTab('katalog')" class="px-4 py-2 bg-white rounded-lg shadow">Katalog</button>
-            <button onclick="showTab('kartu')" class="px-4 py-2 bg-white rounded-lg shadow">Data Siswa</button>
-        </nav>
-
-        <!-- Tab Dashboard -->
-        <div id="tab-dashboard" class="tab-content">
-            <h2 class="text-2xl font-bold mb-4">Dashboard</h2>
-            <div class="mb-8">
-                <h3 class="font-bold mb-3">Buku Favorit</h3>
-                <div class="flex gap-4 overflow-x-auto">
-                    <div class="card-size bg-white p-4 rounded-xl border">Buku A</div>
-                    <div class="card-size bg-white p-4 rounded-xl border">Buku B</div>
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50 no-print border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-gojekGreen p-2 rounded-full text-white w-10 h-10 flex items-center justify-center">
+                    <i class="fa-solid fa-graduation-cap"></i>
                 </div>
+                <span class="text-xl font-bold">Perpustakaan <span class="text-gojekGreen">PGRI 1</span></span>
+            </div>
+            <div class="hidden md:flex space-x-2 bg-gray-100 p-1 rounded-full">
+                <button onclick="switchTab('dashboard')" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold">Beranda</button>
+                <button onclick="switchTab('katalog')" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold">Eksplor</button>
+                <button onclick="switchTab('kartu')" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold">Kartu</button>
+                <button onclick="switchTab('admin')" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold">Kelola</button>
             </div>
         </div>
+    </nav>
 
-        <!-- Tab Katalog -->
-        <div id="tab-katalog" class="tab-content hidden">
-            <h2 class="text-2xl font-bold mb-4">Katalog Buku</h2>
-            <div id="katalog-list" class="grid grid-cols-2 gap-4">
-                <div class="p-4 bg-white rounded-lg border flex justify-between">
-                    <div>
-                        <p class="font-bold">Judul Buku</p>
-                        <p class="text-sm">Penulis</p>
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <button class="bg-gray-100 px-3 py-1 rounded text-xs">Baca</button>
-                        <button class="bg-green-600 text-white px-3 py-1 rounded text-xs">Pinjam</button>
-                    </div>
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 py-6">
+        <!-- Dashboard Tab -->
+        <section id="tab-dashboard" class="tab-content block">
+            <div class="bg-white rounded-3xl p-6 shadow-sm mb-8">
+                <h3 class="font-bold text-lg mb-4">Statistik Perpustakaan</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                    <div class="p-4 bg-green-50 rounded-2xl"><p class="text-xs text-gray-600">Total Buku</p><p class="font-bold text-xl" id="stat-total">0</p></div>
+                    <div class="p-4 bg-blue-50 rounded-2xl"><p class="text-xs text-gray-600">Tersedia</p><p class="font-bold text-xl" id="stat-tersedia">0</p></div>
+                    <div class="p-4 bg-red-50 rounded-2xl"><p class="text-xs text-gray-600">Dipinjam</p><p class="font-bold text-xl" id="stat-dipinjam">0</p></div>
+                    <div class="p-4 bg-orange-50 rounded-2xl"><p class="text-xs text-gray-600">Kategori</p><p class="font-bold text-xl" id="stat-kategori">0</p></div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Tab Data Siswa -->
-        <div id="tab-kartu" class="tab-content hidden">
-            <h2 class="text-2xl font-bold mb-4">Upload Data Siswa</h2>
-            <input type="file" id="upload-excel" class="mb-4" onchange="processExcel(event)">
-            <table class="w-full bg-white text-left">
-                <thead><tr class="border-b"><th>Nama</th><th>Kelas</th></tr></thead>
-                <tbody id="siswa-table-body"></tbody>
-            </table>
-        </div>
-    </div>
+        <!-- Kartu Tab -->
+        <section id="tab-kartu" class="tab-content hidden">
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-3xl shadow-sm">
+                    <h2 class="font-bold mb-4">Isi Data Anggota</h2>
+                    <div class="space-y-4">
+                        <input type="text" id="inp-nama" placeholder="Nama Siswa" class="w-full p-3 bg-gray-50 rounded-xl border">
+                        <input type="text" id="inp-kelas" placeholder="Kelas" class="w-full p-3 bg-gray-50 rounded-xl border">
+                        <input type="text" id="inp-nisn" placeholder="NISN" class="w-full p-3 bg-gray-50 rounded-xl border">
+                    </div>
+                </div>
+                <div id="print-area" class="bg-gojekGreen p-6 rounded-3xl text-white shadow-lg">
+                    <h2 class="text-xl font-bold">KARTU ANGGOTA</h2>
+                    <p class="text-sm opacity-80">SMK PGRI 1 SURABAYA</p>
+                    <div class="mt-6 space-y-2 text-sm">
+                        <p>Nama: <span id="prev-nama" class="font-bold">...</span></p>
+                        <p>Kelas: <span id="prev-kelas" class="font-bold">...</span></p>
+                        <p>NISN: <span id="prev-nisn" class="font-bold">...</span></p>
+                    </div>
+                    <button onclick="window.print()" class="mt-6 w-full bg-white text-gojekGreen py-2 rounded-full font-bold">Cetak Kartu</button>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <script>
-        function showTab(tabId) {
+        // Logika Tab
+        function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById('tab-' + tabId).classList.remove('hidden');
         }
 
-        function login() {
-            const user = document.getElementById('username').value;
-            if(user === "Admin") {
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('main-app').classList.remove('hidden');
-            } else { alert("Login Gagal"); }
+        // Sinkronisasi Input ke Kartu
+        document.getElementById('inp-nama').addEventListener('input', (e) => document.getElementById('prev-nama').innerText = e.target.value);
+        document.getElementById('inp-kelas').addEventListener('input', (e) => document.getElementById('prev-kelas').innerText = e.target.value);
+        document.getElementById('inp-nisn').addEventListener('input', (e) => document.getElementById('prev-nisn').innerText = e.target.value);
+
+        // Simulasi Data Awal
+        const books = [
+            { judul: "Pemrograman Web", kategori: "Pelajaran", isBorrowed: false },
+            { judul: "Laskar Pelangi", kategori: "Fiksi", isBorrowed: true }
+        ];
+
+        function updateStats() {
+            document.getElementById('stat-total').innerText = books.length;
+            document.getElementById('stat-dipinjam').innerText = books.filter(b => b.isBorrowed).length;
+            document.getElementById('stat-tersedia').innerText = books.filter(b => !b.isBorrowed).length;
+            document.getElementById('stat-kategori').innerText = new Set(books.map(b => b.kategori)).size;
         }
 
-        function processExcel(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const sheetName = workbook.SheetNames[0];
-                const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
-                
-                const tbody = document.getElementById('siswa-table-body');
-                tbody.innerHTML = json.map(row => `<tr><td>${row.Nama}</td><td>${row.Kelas}</td></tr>`).join('');
-            };
-            reader.readAsArrayBuffer(file);
-        }
+        updateStats();
     </script>
 </body>
 </html>
