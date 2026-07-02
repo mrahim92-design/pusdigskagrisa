@@ -1,109 +1,632 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Perpustakaan Digital SMK PGRI 1</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        @media print { .no-print { display: none !important; } }
-        .ktp-size { width: 85.6mm; height: 53.98mm; border: 1px solid #ccc; padding: 10px; font-size: 10px; background: white; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perpustakaan Digital SMK PGRI 1 Surabaya</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- FontAwesome Icons -->
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script>
+tailwind.config = {
+theme: {
+extend: {
+colors: {
+gojekGreen: '#00aa13',  /* Primary Gojek Green */ gojekDark: '#00880f',   /* Darker Green for hover */ gojekText: '#1c1c1c',   /* Almost black for text */ gojekBg: '#f5f5f5',      /* Light gray background */ gojekRed: '#ee2737',     /* Gojek Red */
+gojekBlue: '#00a5cf'     /* Gojek Blue */
+},
+fontFamily: {
+sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+}
+}
+}
+}
+</script>
+<style>
+/* CSS Khusus untuk Cetak Kartu */
+@media print {
+body * { visibility: hidden; }
+#print-area, #print-area * { visibility: visible; }
+#print-area {
+position: absolute; left: 0; top: 0; width: 100%; display: flex; flex-wrap: wrap; gap: 20px; justify-content: flex-start; padding: 20px;
+}
+.no-print { display: none !important; }
+@page { margin: 0.5cm; }
+}
+
+
+/* Hide scrollbar for clean look */
+.no-scrollbar::-webkit-scrollbar {
+display: none;
+} 
+.no-scrollbar {
+-ms-overflow-style: none; /* IE and Edge */
+scrollbar-width: none; /* Firefox */
+}
+</style>
 </head>
-<body class="bg-gray-50 pb-20">
+<body class="bg-gojekBg text-gojekText min-h-screen flex flex-col font-sans selection:bg-gojekGreen selection:text-white">
 
-    <!-- Navbar -->
-    <nav class="bg-white p-4 shadow-sm flex justify-between items-center sticky top-0 z-50">
-        <h1 class="font-bold text-green-600">SMK PGRI 1 SURABAYA</h1>
-        <div id="user-info" class="text-xs text-gray-500">Silakan Login</div>
-    </nav>
+<!-- Navbar Desktop (Bergaya Bersih spt Header Gojek) -->
+<nav class="bg-white shadow-sm sticky top-0 z-50 no-print border-b border-gray-100">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<div class="flex items-center justify-between h-16">
+<!-- Logo Brand -->
+<div class="flex items-center gap-3">
+<div class="bg-gojekGreen p-2 rounded-full text-white w-10 h-10 flex items-center justify-center">
+<i class="fa-solid fa-graduation-cap text-lg"></i>
+</div>
+<span class="text-xl font-bold tracking-tight text-gojekText hidden sm:block">Perpustakaan <span class="text-gojekGreen">PGRI 1</span></span>
+<span class="text-xl font-bold tracking-tight text-gojekText sm:hidden">SMK PGRI 1</span>
+</div>
+<!-- Desktop Menu -->
+<div class="hidden md:flex space-x-2 bg-gray-100 p-1 rounded-full">
+<button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold bg-white text-gojekGreen shadow-sm transition"><i class="fa-solid fa-house mr-2"></i>Beranda</button>
+<button onclick="switchTab('katalog')" id="nav-katalog" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:text-gojekText transition"><i
+class="fa-solid fa-magnifying-glass mr-2"></i>Eksplor</button>
+<button onclick="switchTab('pinjaman')" id="nav-pinjaman" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:text-gojekText transition"><i class="fa-solid fa-bookmark mr-2"></i>Buku Saya</button>
+<button onclick="switchTab('kartu')" id="nav-kartu" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:text-gojekText transition"><i class="fa-solid fa-id-card mr-2"></i>Kartu</button>
+<button onclick="switchTab('admin')" id="nav-admin" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:text-gojekText transition"><i class="fa-solid fa-gear mr-2"></i>Kelola</button>
+</div>
+</div>
+</div>
 
-    <!-- Main Content -->
-    <main class="max-w-md mx-auto p-4">
-        
-        <!-- Tab: Beranda -->
-        <section id="tab-beranda" class="tab-content">
-            <h2 class="font-bold mb-2">Buku Favorit</h2>
-            <div class="flex gap-4 overflow-x-auto pb-4">
-                <div class="min-w-[120px] h-40 bg-gray-300 rounded-lg"></div>
-                <div class="min-w-[120px] h-40 bg-gray-300 rounded-lg"></div>
-            </div>
-            <h2 class="font-bold mt-4">Buku Baru</h2>
-            <div id="list-buku" class="grid grid-cols-2 gap-4 mt-2"></div>
-        </section>
 
-        <!-- Tab: Kartu -->
-        <section id="tab-kartu" class="tab-content hidden">
-            <h2 class="font-bold mb-2">Kartu Anggota</h2>
-            <input type="file" id="upload-template" class="mb-2 text-xs">
-            <div id="kartu-digital" class="ktp-size mt-4 mx-auto">
-                <h3 class="font-bold text-[8px]">SMK PGRI 1 SURABAYA</h3>
-                <p class="text-[6px]">Jl. Jemursari VIII No 120 Surabaya</p>
-                <hr class="my-1">
-                <p>Nama: <span id="v-nama">-</span></p>
-                <p>Kelas: <span id="v-kelas">-</span></p>
-                <p>No WA: <span id="v-wa">-</span></p>
-                <p>Alamat: <span id="v-alamat">-</span></p>
-                <p class="mt-2 text-[6px]">Berlaku: 17 Juli 2026 s/d 17 Juni 2029</p>
-                <div class="mt-2 text-[6px] text-right">
-                    Surabaya, 17 Juli 2026<br>Kepala Sekolah<br><br><br>Kustiono, ST., M.M.
-                </div>
-            </div>
-            <button onclick="window.print()" class="w-full bg-green-600 text-white mt-4 py-2 rounded">Cetak Kartu</button>
-        </section>
+<!-- Mobile Bottom Nav (Gojek Style) --> 
+<div class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around py-2 z-50 pb-safe shadow-[0_-2px_10px_rgba(0,0,0,0.05)]
+rounded-t-2xl">
+<button onclick="switchTab('dashboard')" class="flex flex-col items-center gap-1 text-[11px] font-semibold text-gojekGreen" id="mob-dashboard">
+<i class="fa-solid fa-house text-xl"></i>Beranda
+</button>
+<button onclick="switchTab('katalog')" class="flex flex-col items-center gap-1 text-[11px] font-semibold text-gray-400" id="mob-katalog">
+<i class="fa-solid fa-magnifying-glass text-xl"></i>Eksplor
+</button>
+<button onclick="switchTab('pinjaman')" class="flex flex-col items-center gap-1 text-[11px] font-semibold text-gray-400" id="mob-pinjaman">
+<i class="fa-solid fa-bookmark text-xl"></i>Disimpan
+</button>
+<button onclick="switchTab('kartu')" class="flex flex-col items-center gap-1 text-[11px]
+font-semibold text-gray-400" id="mob-kartu">
+<i class="fa-solid fa-id-card text-xl"></i>Kartu
+</button>
+<button onclick="switchTab('admin')" class="flex flex-col items-center gap-1 text-[11px] font-semibold text-gray-400" id="mob-admin">
+<i class="fa-solid fa-gear text-xl"></i>Kelola
+</button>
+</div>
+</nav>
 
-        <!-- Tab: Admin -->
-        <section id="tab-admin" class="tab-content hidden">
-            <div id="login-box">
-                <h2 class="font-bold">Login Admin/Guru</h2>
-                <input type="text" id="username" placeholder="Username" class="w-full p-2 border my-2">
-                <input type="password" id="password" placeholder="Password" class="w-full p-2 border mb-2">
-                <button onclick="login()" class="w-full bg-blue-600 text-white py-2">Masuk</button>
-            </div>
-            <div id="admin-menu" class="hidden">
-                <h2 class="font-bold">Panel Admin</h2>
-                <button onclick="addBuku()" class="block w-full bg-green-500 text-white py-2 my-2">+ Tambah Buku</button>
-                <button onclick="addUser()" class="block w-full bg-blue-500 text-white py-2">+ Tambah User</button>
-            </div>
-        </section>
-    </main>
 
-    <!-- Bottom Nav -->
-    <div class="fixed bottom-0 w-full bg-white border-t p-4 flex justify-around">
-        <button onclick="switchTab('beranda')"><i class="fas fa-home"></i></button>
-        <button onclick="switchTab('kartu')"><i class="fas fa-id-card"></i></button>
-        <button onclick="switchTab('admin')"><i class="fas fa-cog"></i></button>
-    </div>
+<!-- Main Content Area -->
+<main class="flex-grow max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 mb-20 md:mb-0">
 
-    <script>
-        function switchTab(id) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-            document.getElementById('tab-' + id).classList.remove('hidden');
-        }
+<!-- DASHBOARD TAB -->
+<section id="tab-dashboard" class="tab-content block animate-fadeIn no-print">
+<!-- Search Bar Gojek Style -->
+<div class="relative w-full mb-8">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+</div>
+<input type="text" onclick="switchTab('katalog')" placeholder="Cari buku, pelajaran, fiksi..." class="w-full bg-white border border-gray-200 text-gray-800 text-sm rounded-full focus:ring-gojekGreen focus:border-gojekGreen block pl-10 p-3.5 shadow-sm transition">
+<div class="absolute inset-y-0 right-0 pr-2 flex items-center">
+<div class="bg-gojekGreen p-2 rounded-full text-white w-8 h-8 flex items-center justify-center cursor-pointer hover:bg-gojekDark">
+<i class="fa-solid fa-arrow-right text-sm"></i>
+</div>
+</div>
+</div> 
 
-        function login() {
-            const u = document.getElementById('username').value;
-            const p = document.getElementById('password').value;
-            if(u === 'Admin' && p === 'Admin123') {
-                document.getElementById('login-box').classList.add('hidden');
-                document.getElementById('admin-menu').classList.remove('hidden');
-                document.getElementById('user-info').innerText = 'Admin Aktif';
-            } else {
-                alert('Login Gagal!');
-            }
-        }
+<!-- Gojek Style Services / Stats Grid -->
+<div class="bg-white rounded-3xl p-6 shadow-sm mb-8">
+<h3 class="font-bold text-lg mb-4">Statistik Perpustakaan</h3>
+<div class="grid grid-cols-4 gap-4 text-center">
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 bg-green-50 text-gojekGreen rounded-full flex items-center justify-center text-2xl border border-green-100">
+<i class="fa-solid fa-layer-group"></i>
+</div>
+<span class="text-[11px] font-semibold text-gray-600">Total Buku</span>
+<span class="font-bold text-sm" id="stat-total">0</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 bg-blue-50 text-gojekBlue rounded-full flex items-center justify-center text-2xl border border-blue-100">
+<i class="fa-solid fa-circle-check"></i>
+</div>
+<span class="text-[11px] font-semibold text-gray-600">Tersedia</span>
+<span class="font-bold text-sm" id="stat-tersedia">0</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 bg-red-50 text-gojekRed rounded-full flex items-center justify-center text-2xl border border-red-100">
+<i class="fa-solid fa-book-open-reader"></i>
+</div>
+<span class="text-[11px] font-semibold text-gray-600">Dipinjam</span>
+<span class="font-bold text-sm" id="stat-dipinjam">0</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-14 h-14 bg-orange-50 text-orange-500 rounded-full flex items-center justify-center text-2xl border border-orange-100">
+<i class="fa-solid fa-tags"></i>
+</div>
+<span class="text-[11px] font-semibold text-gray-600">Kategori</span>
+<span class="font-bold text-sm" id="stat-kategori">0</span>
+</div>
+</div>
+</div>
 
-        // Logic tambah data bisa dikembangkan ke localstorage/database
-        function addBuku() { alert('Fitur tambah buku aktif'); }
-        function addUser() { alert('Fitur tambah user aktif'); }
 
-        // Simulasi update kartu
-        document.getElementById('v-nama').innerText = "Budi Santoso";
-        document.getElementById('v-kelas').innerText = "XII RPL";
-        document.getElementById('v-wa').innerText = "08123456789";
-        document.getElementById('v-alamat').innerText = "Jl. Surabaya";
-    </script>
+<!-- Banner / Promo Card -->
+<div class="bg-gradient-to-br from-[#00880f] to-[#00aa13] rounded-3xl p-6 text-white shadow-md mb-8 relative overflow-hidden">
+<div class="relative z-10 w-2/3">
+<span class="bg-white/20 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider backdrop-blur-sm">Info Pustaka</span>
+<h2 class="text-xl sm:text-2xl font-extrabold mt-3 leading-tight">Tingkatkan
+Literasi Generasi Z</h2> 
+<p class="text-green-50 mt-2 text-xs sm:text-sm mb-4">Temukan referensi tugasmu atau bacaan fiksi seru. Jangan lupa buat kartu anggota digitalmu di sini!</p>
+<button onclick="switchTab('kartu')" class="bg-white text-gojekGreen font-bold px-5 py-2 rounded-full text-sm shadow-sm hover:bg-gray-50 transition"><i class="fa-solid
+fa-id-badge mr-2"></i>Buat Kartu</button>
+</div>
+<div class="absolute -bottom-6 -right-6 text-white opacity-20 text-9xl transform
+-rotate-12 z-0">
+<i class="fa-solid fa-school"></i>
+</div>
+</div>
+</section>
+
+
+<!-- KATALOG TAB -->
+<section id="tab-katalog" class="tab-content hidden animate-fadeIn no-print">
+<h1 class="text-2xl font-extrabold text-gojekText mb-1">Eksplor Buku</h1>
+<p class="text-sm text-gray-500 mb-6">Temukan bahan bacaan dari koleksi sekolah.</p>
+
+<div class="flex flex-col sm:flex-row gap-3 mb-6">
+<div class="relative flex-grow">
+<input type="text" id="search-input" onkeyup="filterBooks()" placeholder="Cari judul, penulis..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-gojekGreen focus:border-transparent">
+<i class="fa-solid fa-magnifying-glass absolute left-4 top-3 text-gray-400"></i>
+</div>
+<select id="category-filter" onchange="filterBooks()" class="py-2.5 px-4 bg-white border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2
+focus:ring-gojekGreen appearance-none min-w-[150px]">
+<option value="Semua">Semua Kategori</option>
+<option value="Pelajaran">Pelajaran</option>
+<option value="Teknologi">Teknologi</option>
+<option value="Sains">Sains</option>
+<option value="Fiksi">Fiksi</option>
+</select>
+</div>
+
+
+<!-- Buku Cards: Gojek Style -->
+<div id="books-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"></div>
+</section>
+
+
+<!-- PINJAMAN TAB -->
+<section id="tab-pinjaman" class="tab-content hidden animate-fadeIn no-print">
+<h1 class="text-2xl font-extrabold text-gojekText mb-1">Buku Saya</h1>
+<p class="text-sm text-gray-500 mb-6">Daftar buku yang sedang kamu baca saat 
+ini.</p>
+ 
+
+
+<div id="borrowed-list" class="flex flex-col gap-4"></div> 
+</section>
+
+
+<!-- KARTU TAB -->
+<section id="tab-kartu" class="tab-content hidden animate-fadeIn">
+<h1 class="text-2xl font-extrabold text-gojekText mb-1 no-print">Kartu Anggota</h1>
+<p class="text-sm text-gray-500 mb-6 no-print">Buat kartu perpustakaan digital secara instan.</p>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Inputs Area -->
+<div class="lg:col-span-5 space-y-6 no-print">
+<div class="bg-white p-5 rounded-3xl shadow-sm">
+<h2 class="text-base font-bold mb-4 flex items-center"><i class="fa-solid fa-pen-nib bg-green-100 text-gojekGreen p-1.5 rounded-full mr-2 text-xs"></i>Isi Data Manual</h2>
+<form id="card-form" class="space-y-4" oninput="updateCardPreview()">
+<div>
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Nama Siswa</label>
+<input type="text" id="inp-nama" value="Ahmad Dhani" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1 focus:ring-gojekGreen focus:outline-none text-sm">
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div>
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Kelas</label>
+<input type="text" id="inp-kelas" value="XII RPL 1" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1
+focus:ring-gojekGreen focus:outline-none text-sm">
+</div>
+<div>
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">NISN</label>
+<input type="text" id="inp-nisn" value="0041234567" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1 focus:ring-gojekGreen focus:outline-none text-sm">
+</div>
+</div>
+<div>
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">No. WA</label>
+<input type="text" id="inp-wa" value="081234567890" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1
+focus:ring-gojekGreen focus:outline-none text-sm">
+</div>
+<div> 
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Alamat</label>
+<textarea id="inp-alamat" rows="2" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1 focus:ring-gojekGreen focus:outline-none text-sm resize-none">Jl. Semolowaru No. 45, Surabaya</textarea>
+</div>
+</form>
+</div>
+</div>
+
+
+<!-- Preview Area -->
+<div class="lg:col-span-7 bg-white p-5 rounded-3xl shadow-sm relative">
+<div class="flex justify-between items-center mb-6 no-print">
+<h2 class="text-base font-bold"><i class="fa-solid fa-print bg-blue-100 text-gojekBlue p-1.5 rounded-full mr-2 text-xs"></i>Area Cetak</h2>
+<button onclick="window.print()" class="bg-gojekGreen hover:bg-gojekDark text-white px-5 py-2 rounded-full font-bold text-sm transition"><i class="fa-solid fa-print
+mr-2"></i>Cetak</button>
+</div>
+
+
+<div id="print-area" class="flex flex-wrap gap-4 justify-center">
+<!-- ID Card Template (Modern minimalis) -->
+<div class="bg-white border border-gray-200 rounded-2xl w-[340px]
+shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden shrink-0 relative card-template">
+<!-- Header -->
+<div class="bg-gojekGreen text-white text-center py-4 px-4 relative overflow-hidden">
+<i class="fa-solid fa-book-open-reader absolute -right-2 -bottom-2 text-5xl opacity-10"></i>
+<h2 class="font-extrabold text-lg leading-tight tracking-wide">KARTU 
+ANGGOTA</h2>
+
+
+PGRI 1 SBY</h3>
+ 
+
+
+<h3 class="font-bold text-xs opacity-90 mt-0.5">PERPUSTAKAAN SMK 
+</div>
+<!-- Body -->
+<div class="p-5 text-[13px] relative bg-white">
+<table class="w-full mb-4 text-gojekText">
+<tr><td class="font-bold text-gray-500 w-20 py-1.5
+text-xs">Nama</td><td class="py-1.5 font-bold text-sm">: <span id="prev-nama" class="uppercase">Ahmad Dhani</span></td></tr>
+<tr><td class="font-bold text-gray-500 py-1.5 text-xs">Kelas</td><td class="py-1.5 font-semibold">: <span id="prev-kelas">XII RPL 1</span></td></tr>
+<tr><td class="font-bold text-gray-500 py-1.5 text-xs">NISN</td><td class="py-1.5 font-semibold">: <span id="prev-nisn">0041234567</span></td></tr>
+<tr><td class="font-bold text-gray-500 py-1.5 text-xs">No. WA</td><td class="py-1.5 font-semibold">: <span
+id="prev-wa">081234567890</span></td></tr> 
+<tr><td class="font-bold text-gray-500 py-1.5 text-xs align-top">Alamat</td><td class="py-1.5 font-semibold leading-snug">: <span id="prev-alamat">Jl. Semolowaru No. 45, Surabaya</span></td></tr>
+</table>
+
+ 
+
+
+pt-3">
+
+
+rounded">
+ 
+<div class="flex justify-between items-end border-t border-gray-100
+
+
+<div class="text-[10px] text-gojekRed font-bold bg-red-50 px-2 py-1
+
+
+Berlaku s/d: 20 Juni 2029
+</div>
+<div class="text-center text-[10px] font-medium text-gray-600">
+<p>SBY, 17 Juli 2026</p>
+<div class="h-8 flex items-center justify-center">
+<span class="font-signature text-gray-400 opacity-50 text-xl 
+-rotate-6 italic">ttd</span>
+</div>
+<p class="font-bold text-gray-800 underline">Kustiono, ST., 
+M.M</p>
+ 
+
+
+</div>
+</div>
+</div>
+</div>
+</div>
+</div> 
+</div>
+</section>
+
+
+<!-- ADMIN TAB -->
+<section id="tab-admin" class="tab-content hidden animate-fadeIn no-print">
+<h1 class="text-2xl font-extrabold text-gojekText mb-1">Kelola Data</h1>
+<p class="text-sm text-gray-500 mb-6">Manajemen koleksi buku perpustakaan.</p>
+
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Tambah Buku -->
+<div class="bg-white p-5 rounded-3xl shadow-sm lg:col-span-1 h-fit">
+<h2 class="text-base font-bold mb-4 flex items-center"><i class="fa-solid fa-plus bg-green-100 text-gojekGreen p-1.5 rounded-full mr-2 text-xs"></i>Buku Baru</h2>
+<form id="add-book-form" onsubmit="saveNewBook(event)" class="space-y-4">
+<div>
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Judul Buku</label>
+<input type="text" id="form-judul" required class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1 focus:ring-gojekGreen focus:outline-none text-sm">
+</div>
+<div> 
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Penulis</label>
+<input type="text" id="form-penulis" required class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1
+focus:ring-gojekGreen focus:outline-none text-sm">
+</div>
+<div>
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Kategori</label>
+<select id="form-kategori" class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1 focus:ring-gojekGreen focus:outline-none text-sm appearance-none">
+<option value="Pelajaran">Pelajaran</option>
+<option value="Teknologi">Teknologi</option>
+<option value="Sains">Sains</option>
+<option value="Fiksi">Fiksi</option>
+</select>
+</div>
+<div>
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">URL Cover</label>
+<input type="url" id="form-cover" placeholder="https://..." class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1
+focus:ring-gojekGreen focus:outline-none text-sm">
+</div>
+<div>
+<label class="block text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-1">Deskripsi Singkat</label>
+<textarea id="form-deskripsi" rows="3" required class="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-1
+focus:ring-gojekGreen focus:outline-none text-sm resize-none"></textarea>
+</div>
+<button type="submit" class="w-full bg-gojekGreen hover:bg-gojekDark
+text-white font-bold py-3 rounded-full transition shadow-sm text-sm">Simpan Buku</button>
+</form>
+</div>
+
+
+<!-- Tabel Data -->
+<div class="bg-white p-5 rounded-3xl shadow-sm lg:col-span-2 overflow-hidden">
+<h2 class="text-base font-bold mb-4 flex items-center"><i class="fa-solid fa-list-check bg-blue-100 text-gojekBlue p-1.5 rounded-full mr-2 text-xs"></i>Daftar Koleksi</h2>
+<div class="overflow-x-auto no-scrollbar">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-gray-50 border-y border-gray-100">
+<th class="p-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Info Buku</th> 
+<th class="p-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Kategori</th>
+<th class="p-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-center">Status</th>
+<th class="p-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
+</tr>
+</thead>
+<tbody id="admin-table-body" class="divide-y divide-gray-100 text-sm">
+<!-- Dynamic rows via JS -->
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+</main>
+
+
+<!-- Script Logika JavaScript (Dilengkapi) -->
+<script>
+const defaultBooks = [
+{ id: 1, judul: "Pemrograman Web Kelas XII", penulis: "Kemdikbud", kategori: "Pelajaran", cover:
+"https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=400&q=80", deskripsi: "Buku pegangan siswa RPL.", isBorrowed: false },
+{ id: 2, judul: "Jaringan Komputer Dasar", penulis: "Andi Publisher", kategori: "Teknologi", cover:
+"https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=400&q=80", deskripsi: "Topologi dan routing TKJ.", isBorrowed: false },
+{ id: 3, judul: "Laskar Pelangi", penulis: "Andrea Hirata", kategori: "Fiksi", cover: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&q=80", deskripsi: "Kisah perjuangan anak-anak.", isBorrowed: true }
+];
+
+
+let books = [];
+
+
+window.onload = function() {
+if (!localStorage.getItem('pustaka_books')) {
+localStorage.setItem('pustaka_books', JSON.stringify(defaultBooks));
+}
+loadData();
+};
+
+
+function loadData() {
+books = JSON.parse(localStorage.getItem('pustaka_books'));
+updateDashboardStats(); renderCatalog(); renderBorrowed(); 
+renderAdminTable();
+}
+
+
+// Logic Navigasi Tab function switchTab(tabId) {
+document.querySelectorAll('.tab-content').forEach(el => {
+el.classList.add('hidden');
+el.classList.remove('block');
+});
+document.getElementById('tab-' + tabId).classList.remove('hidden');
+document.getElementById('tab-' + tabId).classList.add('block');
+
+
+// Desktop Nav
+document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.remove('bg-white', 'text-gojekGreen', 'shadow-sm'); btn.classList.add('text-gray-500');
+});
+const activeBtn = document.getElementById('nav-' + tabId);
+if(activeBtn) {
+activeBtn.classList.remove('text-gray-500');
+activeBtn.classList.add('bg-white', 'text-gojekGreen', 'shadow-sm');
+}
+
+
+// Mobile Nav
+const mobTabs = ['dashboard', 'katalog', 'pinjaman', 'kartu', 'admin'];
+mobTabs.forEach(t => {
+const mobEl = document.getElementById('mob-' + t);
+if (mobEl) {
+if (t === tabId) { mobEl.classList.remove('text-gray-400'); mobEl.classList.add('text-gojekGreen');
+} else {
+mobEl.classList.remove('text-gojekGreen');
+mobEl.classList.add('text-gray-400');
+}
+}
+});
+window.scrollTo(0,0);
+}
+
+
+// Statistik Dashboard
+function updateDashboardStats() {
+const total = books.length;
+const dipinjam = books.filter(b => b.isBorrowed).length; document.getElementById('stat-total').innerText = total; document.getElementById('stat-dipinjam').innerText = dipinjam; document.getElementById('stat-tersedia').innerText = total - dipinjam; 
+document.getElementById('stat-kategori').innerText = [...new Set(books.map(b =>
+b.kategori))].length;
+}
+
+
+// Katalog Grid Rendering
+function renderCatalog(filteredBooks = null) {
+const container = document.getElementById('books-grid');
+container.innerHTML = '';
+const listToRender = filteredBooks || books;
+
+
+if (listToRender.length === 0) {
+container.innerHTML = `<div class="col-span-full text-center py-12
+text-gray-400"><i class="fa-solid fa-box-open text-4xl mb-3"></i><p class="text-sm">Buku tidak ditemukan.</p></div>`;
+return;
+}
+
+
+listToRender.forEach(book => {
+const badgeColor = book.isBorrowed ? 'bg-red-50 text-gojekRed' : 'bg-green-50 text-gojekGreen';
+const badgeText = book.isBorrowed ? 'Dipinjam' : 'Tersedia';
+const btnAction = book.isBorrowed
+? `<button disabled class="w-full mt-4 bg-gray-100 text-gray-400 py-2 rounded-full font-bold text-xs cursor-not-allowed">Stok Habis</button>`
+: `<button onclick="borrowBook(${book.id})" class="w-full mt-4 bg-gojekGreen hover:bg-gojekDark text-white py-2 rounded-full font-bold text-xs shadow-sm transition">Pinjam</button>`;
+
+container.innerHTML += `
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col justify-between hover:shadow-md transition">
+<div>
+<div class="h-32 sm:h-40 w-full overflow-hidden bg-gray-100 relative">
+<img src="${book.cover}" alt="${book.judul}" class="w-full h-full 
+object-cover">
+ 
+
+
+<span class="absolute top-2 left-2 text-[10px] font-bold px-2 py-1 
+rounded-full ${badgeColor}">${badgeText}</span>
+</div>
+<div class="p-3 sm:p-4">
+<span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">${book.kategori}</span>
+<h3 class="font-bold text-gray-800 text-sm mt-1 line-clamp-2 leading-tight">${book.judul}</h3>
+<p class="text-[11px] text-gray-500 mt-1 truncate">${book.penulis}</p>
+</div>
+</div>
+<div class="p-3 sm:p-4 pt-0">${btnAction}</div>
+</div>`; 
+});
+}
+
+
+function filterBooks() {
+const query = document.getElementById('search-input').value.toLowerCase();
+const category = document.getElementById('category-filter').value;
+
+
+const filtered = books.filter(b => {
+const matchSearch = b.judul.toLowerCase().includes(query) ||
+b.penulis.toLowerCase().includes(query);
+const matchCategory = category === 'Semua' || b.kategori === category;
+return matchSearch && matchCategory;
+});
+renderCatalog(filtered);
+}
+
+
+// Peminjaman Logic function borrowBook(id) {
+const index = books.findIndex(b => b.id === id);
+if(index > -1) { books[index].isBorrowed = true; saveData();
+alert('Buku berhasil ditambahkan ke "Buku Saya"');
+}
+}
+
+
+function returnBook(id) {
+const index = books.findIndex(b => b.id === id);
+if(index > -1) { books[index].isBorrowed = false; saveData();
+}
+}
+
+
+// List Pinjaman (Gojek List Style)
+function renderBorrowed() {
+const container = document.getElementById('borrowed-list');
+container.innerHTML = '';
+const borrowedBooks = books.filter(b => b.isBorrowed);
+if (borrowedBooks.length === 0) {
+container.innerHTML = `<div class="text-center py-12 text-gray-400"><i class="fa-solid fa-bookmark text-4xl mb-3"></i><p class="text-sm">Belum ada buku yang disimpan/dipinjam.</p></div>`;
+return;
+}
+borrowedBooks.forEach(book => {
+container.innerHTML += ` 
+<div class="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm flex items-center gap-4">
+<img src="${book.cover}" class="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-xl bg-gray-100 flex-shrink-0">
+<div class="flex-grow">
+<span class="text-[10px] font-bold text-gray-500 uppercase">${book.kategori}</span>
+<h3 class="font-bold text-gray-800 text-sm mt-0.5 line-clamp-1">${book.judul}</h3>
+<p class="text-xs text-gray-500 mt-1">Oleh ${book.penulis}</p>
+</div>
+<button onclick="returnBook(${book.id})" class="text-xs bg-red-50 text-gojekRed hover:bg-red-100 font-bold px-4 py-2 rounded-full transition
+flex-shrink-0">Selesai</button>
+</div>`;
+});
+}
+
+
+// Preview Kartu Anggota Live Update function updateCardPreview() {
+document.getElementById('prev-nama').innerText =
+document.getElementById('inp-nama').value || '-';
+document.getElementById('prev-kelas').innerText =
+document.getElementById('inp-kelas').value || '-';
+document.getElementById('prev-nisn').innerText =
+document.getElementById('inp-nisn').value || '-';
+document.getElementById('prev-wa').innerText =
+document.getElementById('inp-wa').value || '-';
+document.getElementById('prev-alamat').innerText =
+document.getElementById('inp-alamat').value || '-';
+}
+
+
+// Fitur Kelola Data (Admin)
+function renderAdminTable() {
+const tbody = document.getElementById('admin-table-body');
+tbody.innerHTML = '';
+books.forEach(book => {
+const statusBadge = book.isBorrowed ? '<span class="px-2 py-1 rounded
+bg-red-50 text-gojekRed text-[10px] font-bold">Dipinjam</span>' : '<span class="px-2 py-1 rounded bg-green-50 text-gojekGreen text-[10px] font-bold">Tersedia</span>';
+tbody.innerHTML += `
+<tr>
+<td class="p-3">
+<div class="font-bold text-gray-800 line-clamp-1">${book.judul}</div>
+<div class="text-[11px] text-gray-400">${book.penulis}</div>
+</td>
+<td class="p-3 text-xs text-gray-600">${book.kategori}</td>
+<td class="p-3 text-center">${statusBadge}</td> 
+<td class="p-3 text-right">
+<button onclick="deleteBook(${book.id})" class="text-gray-400 hover:text-gojekRed transition"><i class="fa-solid fa-trash"></i></button>
+</td>
+</tr>`;
+});
+}
+
+
+function saveNewBook(e) {
+e.preventDefault();
+const id = Date.now();
+const coverInput = document.getElementById('form-cover').value;
+const newBook = {
+id: id,
+judul: document.getElementById('form-judul').value, penulis: document.getElementById('form-penulis').value, kategori: document.getElementById('form-kategori').value, cover: coverInput ||
+'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&q=80', deskripsi: document.getElementById('form-deskripsi').value,
+isBorrowed: false
+};
+books.unshift(newBook); // Taruh di awal saveData();
+document.getElementById('add-book-form').reset();
+alert('Buku berhasil ditambahkan!');
+}
+
+
+function deleteBook(id) {
+if(confirm('Hapus buku dari data?')) { books = books.filter(b => b.id !== id); saveData();
+}
+}
+
+
+function saveData() {
+localStorage.setItem('pustaka_books', JSON.stringify(books));
+loadData(); // Re-render everything
+}
+</script>
 </body>
 </html>
