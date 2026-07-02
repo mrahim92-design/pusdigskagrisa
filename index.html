@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perpustakaan Digital SMK PGRI 1 SBY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        gojekGreen: '#00880c',
+                        gojekLightGreen: '#e5f3e6',
+                        gojekDark: '#1c1c1c',
+                        gojekGrey: '#f5f6f6',
+                        gojekRed: '#ee2737',
+                        gojekBlue: '#00a5cf'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Hilangkan scrollbar untuk estetika ala aplikasi */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* CSS Cetak Kartu */
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area {
+                position: absolute; left: 0; top: 0; width: 100%;
+                display: flex; flex-wrap: wrap; gap: 20px; justify-content: flex-start; padding: 20px;
+            }
+            .no-print { display: none !important; }
+            @page { margin: 0.5cm; }
+        }
+    </style>
+</head>
+<body class="bg-gojekGrey text-gojekDark min-h-screen flex flex-col pb-20 md:pb-0">
+
+    <nav class="bg-white shadow-sm sticky top-0 z-50 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="bg-gojekGreen p-2 rounded-full text-white w-10 h-10 flex items-center justify-center">
+                        <i class="fa-solid fa-graduation-cap text-lg"></i>
+                    </div>
+                    <span class="text-lg font-bold tracking-tight text-gojekDark">Perpus<span class="text-gojekGreen">Go</span></span>
+                </div>
+                
+                <div class="hidden md:flex space-x-1">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold bg-gojekGreen text-white transition">Beranda</button>
+                    <button onclick="switchTab('katalog')" id="nav-katalog" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:bg-gray-100 transition">Katalog</button>
+                    <button onclick="switchTab('pinjaman')" id="nav-pinjaman" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:bg-gray-100 transition">Buku Saya</button>
+                    <button onclick="switchTab('kartu')" id="nav-kartu" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:bg-gray-100 transition">ID Card</button>
+                    <button onclick="switchTab('siswa')" id="nav-siswa" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:bg-gray-100 transition">Data Siswa</button>
+                    <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn px-4 py-2 rounded-full text-sm font-semibold text-gray-500 hover:bg-gray-100 transition">Kelola Buku</button>
+                </div>
+                
+                <div class="bg-gray-100 p-2 rounded-full text-gray-600 w-10 h-10 flex items-center justify-center cursor-pointer hover:bg-gray-200">
+                    <i class="fa-solid fa-user"></i>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:
